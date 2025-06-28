@@ -1,28 +1,28 @@
-const mongoose = require("mongoose")
+const mongoose = require('mongoose');
 
 const couponSchema = new mongoose.Schema(
   {
     code: {
       type: String,
-      required: [true, "Coupon code is required"],
+      required: [true, 'Coupon code is required'],
       unique: true,
       uppercase: true,
       trim: true,
-      maxlength: [20, "Coupon code cannot exceed 20 characters"],
+      maxlength: [20, 'Coupon code cannot exceed 20 characters'],
     },
     description: {
       type: String,
-      maxlength: [200, "Description cannot exceed 200 characters"],
+      maxlength: [200, 'Description cannot exceed 200 characters'],
     },
     type: {
       type: String,
-      enum: ["percentage", "fixed"],
-      required: [true, "Coupon type is required"],
+      enum: ['percentage', 'fixed'],
+      required: [true, 'Coupon type is required'],
     },
     value: {
       type: Number,
-      required: [true, "Coupon value is required"],
-      min: [0, "Coupon value cannot be negative"],
+      required: [true, 'Coupon value is required'],
+      min: [0, 'Coupon value cannot be negative'],
     },
     minimumOrderAmount: {
       type: Number,
@@ -45,40 +45,40 @@ const couponSchema = new mongoose.Schema(
     },
     validFrom: {
       type: Date,
-      required: [true, "Valid from date is required"],
+      required: [true, 'Valid from date is required'],
     },
     validUntil: {
       type: Date,
-      required: [true, "Valid until date is required"],
+      required: [true, 'Valid until date is required'],
     },
     applicableProducts: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
+        ref: 'Product',
       },
     ],
     applicableCategories: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Category",
+        ref: 'Category',
       },
     ],
     excludedProducts: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
+        ref: 'Product',
       },
     ],
     excludedCategories: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Category",
+        ref: 'Category',
       },
     ],
     applicableUsers: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: 'User',
       },
     ],
     firstTimeUserOnly: {
@@ -91,18 +91,18 @@ const couponSchema = new mongoose.Schema(
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: true,
     },
     usageHistory: [
       {
         user: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
+          ref: 'User',
         },
         order: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Order",
+          ref: 'Order',
         },
         discountAmount: Number,
         usedAt: {
@@ -114,65 +114,73 @@ const couponSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
-)
+  }
+);
 
 // Indexes for better performance
-couponSchema.index({ code: 1 })
-couponSchema.index({ validFrom: 1, validUntil: 1 })
-couponSchema.index({ isActive: 1 })
+// couponSchema.index({ code: 1 })
+couponSchema.index({ validFrom: 1, validUntil: 1 });
+couponSchema.index({ isActive: 1 });
 
 // Virtual for checking if coupon is currently valid
-couponSchema.virtual("isCurrentlyValid").get(function () {
-  const now = new Date()
+couponSchema.virtual('isCurrentlyValid').get(function () {
+  const now = new Date();
   return (
     this.isActive &&
     this.validFrom <= now &&
     this.validUntil >= now &&
     (this.usageLimit === null || this.usedCount < this.usageLimit)
-  )
-})
+  );
+});
 
 // Method to check if coupon is valid for a specific user and order
-couponSchema.methods.isValidForUser = function (userId, orderAmount, userOrderCount) {
-  if (!this.isCurrentlyValid) return false
+couponSchema.methods.isValidForUser = function (
+  userId,
+  orderAmount,
+  userOrderCount
+) {
+  if (!this.isCurrentlyValid) return false;
 
   // Check minimum order amount
-  if (orderAmount < this.minimumOrderAmount) return false
+  if (orderAmount < this.minimumOrderAmount) return false;
 
   // Check if first time user only
-  if (this.firstTimeUserOnly && userOrderCount > 0) return false
+  if (this.firstTimeUserOnly && userOrderCount > 0) return false;
 
   // Check usage limit per user
-  const userUsageCount = this.usageHistory.filter((usage) => usage.user.toString() === userId.toString()).length
+  const userUsageCount = this.usageHistory.filter(
+    (usage) => usage.user.toString() === userId.toString()
+  ).length;
 
-  if (userUsageCount >= this.usageLimitPerUser) return false
+  if (userUsageCount >= this.usageLimitPerUser) return false;
 
   // Check if user is in applicable users list (if specified)
   if (this.applicableUsers.length > 0) {
-    return this.applicableUsers.some((user) => user.toString() === userId.toString())
+    return this.applicableUsers.some(
+      (user) => user.toString() === userId.toString()
+    );
   }
 
-  return true
-}
+  return true;
+};
 
 // Method to calculate discount amount
 couponSchema.methods.calculateDiscount = function (orderAmount) {
-  let discount = 0
+  let discount = 0;
 
-  if (this.type === "percentage") {
-    discount = (orderAmount * this.value) / 100
-  } else if (this.type === "fixed") {
-    discount = this.value
+  if (this.type === 'percentage') {
+    discount = (orderAmount * this.value) / 100;
+  } else if (this.type === 'fixed') {
+    discount = this.value;
   }
 
   // Apply maximum discount limit if specified
   if (this.maximumDiscountAmount && discount > this.maximumDiscountAmount) {
-    discount = this.maximumDiscountAmount
+    discount = this.maximumDiscountAmount;
   }
 
   // Ensure discount doesn't exceed order amount
-  return Math.min(discount, orderAmount)
-}
+  return Math.min(discount, orderAmount);
+};
 
-module.exports = mongoose.model("Coupon", couponSchema)
+module.exports = mongoose.model('Coupon', couponSchema);

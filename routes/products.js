@@ -1,5 +1,5 @@
-const express = require("express")
-const router = express.Router()
+const express = require('express');
+const router = express.Router();
 const {
   getProducts,
   getProduct,
@@ -13,123 +13,159 @@ const {
   getTopRatedProducts,
   searchProducts,
   getRelatedProducts,
-} = require("../controllers/productController")
-const { getProductReviews, getReviewStats, createReview } = require("../controllers/reviewController")
-const { protect, restrictTo } = require("../middleware/auth")
-const { validateProduct, validateReview, validateObjectId } = require("../middleware/validation")
-const upload = require("../middleware/upload")
+} = require('../controllers/productController');
+const {
+  getProductReviews,
+  getReviewStats,
+  createReview,
+} = require('../controllers/reviewController');
+const { protect, restrictTo } = require('../middleware/auth');
+const {
+  validateProduct,
+  validateReview,
+  validateObjectId,
+} = require('../middleware/validation');
+const upload = require('../middleware/upload');
 
 /**
- * @route   GET /api/v1/products
+ * @route   GET /api/products
  * @desc    Get all products with filtering and pagination
  * @access  Public
  */
-router.get("/", getProducts)
+router.get('/', getProducts);
 
 /**
- * @route   GET /api/v1/products/featured
+ * @route   GET /api/products/featured
  * @desc    Get featured products
  * @access  Public
  */
-router.get("/featured", getFeaturedProducts)
+router.get('/featured', getFeaturedProducts);
 
 /**
- * @route   GET /api/v1/products/latest
+ * @route   GET /api/products/latest
  * @desc    Get latest products
  * @access  Public
  */
-router.get("/latest", getLatestProducts)
+router.get('/latest', getLatestProducts);
 
 /**
- * @route   GET /api/v1/products/best-selling
+ * @route   GET /api/products/best-selling
  * @desc    Get best selling products
  * @access  Public
  */
-router.get("/best-selling", getBestSellingProducts)
+router.get('/best-selling', getBestSellingProducts);
 
 /**
- * @route   GET /api/v1/products/top-rated
+ * @route   GET /api/products/top-rated
  * @desc    Get top rated products
  * @access  Public
  */
-router.get("/top-rated", getTopRatedProducts)
+router.get('/top-rated', getTopRatedProducts);
 
 /**
- * @route   GET /api/v1/products/search
+ * @route   GET /api/products/search
  * @desc    Search products
  * @access  Public
  */
-router.get("/search", searchProducts)
+router.get('/search', searchProducts);
 
 /**
- * @route   GET /api/v1/products/slug/:slug
+ * @route   GET /api/products/slug/:slug
  * @desc    Get product by slug
  * @access  Public
  */
-router.get("/slug/:slug", getProductBySlug)
+router.get('/slug/:slug', getProductBySlug);
 
 /**
- * @route   POST /api/v1/products
+ * @route   POST /api/products
  * @desc    Create new product
  * @access  Private (Admin/Seller)
  */
-router.post("/", protect, restrictTo("admin", "seller"), upload.array("images", 5), validateProduct, createProduct)
+router.post(
+  '/',
+  protect,
+  restrictTo('admin', 'seller'),
+  upload.array('images', 5),
+  validateProduct,
+  createProduct
+);
 
 /**
- * @route   GET /api/v1/products/:id
+ * @route   GET /api/products/:id
  * @desc    Get single product
  * @access  Public
  */
-router.get("/:id", validateObjectId(), getProduct)
+router.get('/:id', validateObjectId(), getProduct);
 
 /**
- * @route   PUT /api/v1/products/:id
+ * @route   PUT /api/products/:id
  * @desc    Update product
  * @access  Private (Admin/Seller)
  */
-router.put("/:id", protect, restrictTo("admin", "seller"), validateObjectId(), upload.array("images", 5), updateProduct)
+router.put(
+  '/:id',
+  protect,
+  restrictTo('admin', 'seller'),
+  validateObjectId(),
+  upload.array('images', 5),
+  updateProduct
+);
 
 /**
- * @route   DELETE /api/v1/products/:id
+ * @route   DELETE /api/products/:id
  * @desc    Delete product
  * @access  Private (Admin/Seller)
  */
-router.delete("/:id", protect, restrictTo("admin", "seller"), validateObjectId(), deleteProduct)
+router.delete(
+  '/:id',
+  protect,
+  restrictTo('admin', 'seller'),
+  validateObjectId(),
+  deleteProduct
+);
 
 /**
- * @route   GET /api/v1/products/:id/related
+ * @route   GET /api/products/:id/related
  * @desc    Get related products
  * @access  Public
  */
-router.get("/:id/related", validateObjectId(), getRelatedProducts)
+router.get('/:id/related', validateObjectId(), getRelatedProducts);
 
 // Product Reviews Routes
 /**
- * @route   GET /api/v1/products/:productId/reviews
+ * @route   GET /api/products/:productId/reviews
  * @desc    Get all reviews for a product
  * @access  Public
  */
-router.get("/:productId/reviews", validateObjectId("productId"), getProductReviews)
+router.get(
+  '/:productId/reviews',
+  validateObjectId('productId'),
+  getProductReviews
+);
 
 /**
- * @route   GET /api/v1/products/:productId/reviews/stats
+ * @route   GET /api/products/:productId/reviews/stats
  * @desc    Get review statistics for a product
  * @access  Public
  */
-router.get("/:productId/reviews/stats", validateObjectId("productId"), getReviewStats)
+router.get(
+  '/:productId/reviews/stats',
+  validateObjectId('productId'),
+  getReviewStats
+);
 
 /**
- * @route   POST /api/v1/products/:productId/reviews
+ * @route   POST /api/products/:productId/reviews
  * @desc    Create new review for a product
  * @access  Private
  */
 router.post(
-  "/:productId/reviews",
+  '/:productId/reviews',
   protect,
-  validateObjectId("productId"),
-  upload.array("images", 3),
+  validateObjectId('productId'),
+  upload.array('images', 3),
   validateReview,
-  createReview,
-)
+  createReview
+);
 
-module.exports = router
+module.exports = router;

@@ -1,12 +1,16 @@
-const Product = require("../models/Product")
-const Category = require("../models/Category")
-const Review = require("../models/Review")
-const { calculatePagination, generateSlug, generateSKU } = require("../utils/helpers")
-const cloudinary = require("../config/cloudinary")
+const Product = require('../models/Product');
+const Category = require('../models/Category');
+const Review = require('../models/Review');
+const {
+  calculatePagination,
+  generateSlug,
+  generateSKU,
+} = require('../utils/helpers');
+const cloudinary = require('../config/cloudinary');
 
 /**
  * @desc    Get all products with filtering, sorting, and pagination
- * @route   GET /api/v1/products
+ * @route   GET /api/products
  * @access  Public
  */
 const getProducts = async (req, res) => {
@@ -20,179 +24,179 @@ const getProducts = async (req, res) => {
       minPrice,
       maxPrice,
       rating,
-      sort = "-createdAt",
+      sort = '-createdAt',
       search,
-      status = "active",
+      status = 'active',
       featured,
-    } = req.query
+    } = req.query;
 
     // Build query
-    const query = { status }
+    const query = { status };
 
     // Category filter
     if (category) {
-      const categoryDoc = await Category.findOne({ slug: category })
+      const categoryDoc = await Category.findOne({ slug: category });
       if (categoryDoc) {
-        query.category = categoryDoc._id
+        query.category = categoryDoc._id;
       }
     }
 
     // Subcategory filter
     if (subcategory) {
-      const subcategoryDoc = await Category.findOne({ slug: subcategory })
+      const subcategoryDoc = await Category.findOne({ slug: subcategory });
       if (subcategoryDoc) {
-        query.subcategory = subcategoryDoc._id
+        query.subcategory = subcategoryDoc._id;
       }
     }
 
     // Brand filter
     if (brand) {
-      query.brand = new RegExp(brand, "i")
+      query.brand = new RegExp(brand, 'i');
     }
 
     // Price range filter
     if (minPrice || maxPrice) {
-      query.price = {}
-      if (minPrice) query.price.$gte = Number(minPrice)
-      if (maxPrice) query.price.$lte = Number(maxPrice)
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
     // Rating filter
     if (rating) {
-      query["ratings.average"] = { $gte: Number(rating) }
+      query['ratings.average'] = { $gte: Number(rating) };
     }
 
     // Featured filter
-    if (featured === "true") {
-      query.isFeatured = true
+    if (featured === 'true') {
+      query.isFeatured = true;
     }
 
     // Search filter
     if (search) {
-      query.$text = { $search: search }
+      query.$text = { $search: search };
     }
 
     // Get total count for pagination
-    const total = await Product.countDocuments(query)
-    const pagination = calculatePagination(page, limit, total)
+    const total = await Product.countDocuments(query);
+    const pagination = calculatePagination(page, limit, total);
 
     // Execute query with pagination and sorting
     const products = await Product.find(query)
-      .populate("category", "name slug")
-      .populate("subcategory", "name slug")
-      .select("-reviews")
+      .populate('category', 'name slug')
+      .populate('subcategory', 'name slug')
+      .select('-reviews')
       .sort(sort)
       .skip(pagination.skip)
-      .limit(pagination.itemsPerPage)
+      .limit(pagination.itemsPerPage);
 
     res.status(200).json({
       success: true,
       count: products.length,
       pagination,
       data: products,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching products",
+      message: 'Error fetching products',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Get single product
- * @route   GET /api/v1/products/:id
+ * @route   GET /api/products/:id
  * @access  Public
  */
 const getProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
-      .populate("category", "name slug")
-      .populate("subcategory", "name slug")
-      .populate("vendor", "firstName lastName")
+      .populate('category', 'name slug')
+      .populate('subcategory', 'name slug')
+      .populate('vendor', 'firstName lastName')
       .populate({
-        path: "reviews",
+        path: 'reviews',
         populate: {
-          path: "user",
-          select: "firstName lastName avatar",
+          path: 'user',
+          select: 'firstName lastName avatar',
         },
         options: { sort: { createdAt: -1 }, limit: 10 },
       })
-      .populate("relatedProducts", "name price images ratings")
+      .populate('relatedProducts', 'name price images ratings');
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
-      })
+        message: 'Product not found',
+      });
     }
 
     // Increment view count
-    product.viewCount += 1
-    await product.save({ validateBeforeSave: false })
+    product.viewCount += 1;
+    await product.save({ validateBeforeSave: false });
 
     res.status(200).json({
       success: true,
       data: product,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching product",
+      message: 'Error fetching product',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Get product by slug
- * @route   GET /api/v1/products/slug/:slug
+ * @route   GET /api/products/slug/:slug
  * @access  Public
  */
 const getProductBySlug = async (req, res) => {
   try {
     const product = await Product.findOne({ slug: req.params.slug })
-      .populate("category", "name slug")
-      .populate("subcategory", "name slug")
-      .populate("vendor", "firstName lastName")
+      .populate('category', 'name slug')
+      .populate('subcategory', 'name slug')
+      .populate('vendor', 'firstName lastName')
       .populate({
-        path: "reviews",
+        path: 'reviews',
         populate: {
-          path: "user",
-          select: "firstName lastName avatar",
+          path: 'user',
+          select: 'firstName lastName avatar',
         },
         options: { sort: { createdAt: -1 }, limit: 10 },
       })
-      .populate("relatedProducts", "name price images ratings")
+      .populate('relatedProducts', 'name price images ratings');
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
-      })
+        message: 'Product not found',
+      });
     }
 
     // Increment view count
-    product.viewCount += 1
-    await product.save({ validateBeforeSave: false })
+    product.viewCount += 1;
+    await product.save({ validateBeforeSave: false });
 
     res.status(200).json({
       success: true,
       data: product,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching product",
+      message: 'Error fetching product',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Create new product
- * @route   POST /api/v1/products
+ * @route   POST /api/products
  * @access  Private (Admin/Seller)
  */
 const createProduct = async (req, res) => {
@@ -221,30 +225,30 @@ const createProduct = async (req, res) => {
       shippingRequired,
       taxable,
       taxClass,
-    } = req.body
+    } = req.body;
 
     // Generate SKU if not provided
-    const categoryDoc = await Category.findById(category)
-    const sku = generateSKU(name, categoryDoc.name)
+    const categoryDoc = await Category.findById(category);
+    const sku = generateSKU(name, categoryDoc.name);
 
     // Generate slug
-    const slug = generateSlug(name)
+    const slug = generateSlug(name);
 
     // Handle image uploads
-    const images = []
+    const images = [];
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         const result = await cloudinary.uploader.upload(file.path, {
-          folder: "products",
-          quality: "auto",
-          fetch_format: "auto",
-        })
+          folder: 'products',
+          quality: 'auto',
+          fetch_format: 'auto',
+        });
 
         images.push({
           public_id: result.public_id,
           url: result.secure_url,
           alt: name,
-        })
+        });
       }
     }
 
@@ -265,8 +269,10 @@ const createProduct = async (req, res) => {
       lowStockThreshold,
       weight,
       dimensions,
-      tags: tags ? tags.split(",").map((tag) => tag.trim()) : [],
-      features: features ? features.split(",").map((feature) => feature.trim()) : [],
+      tags: tags ? tags.split(',').map((tag) => tag.trim()) : [],
+      features: features
+        ? features.split(',').map((feature) => feature.trim())
+        : [],
       specifications: specifications ? JSON.parse(specifications) : {},
       seoTitle,
       seoDescription,
@@ -276,46 +282,49 @@ const createProduct = async (req, res) => {
       taxable,
       taxClass,
       vendor: req.user.id,
-    })
+    });
 
-    await product.populate("category", "name slug")
+    await product.populate('category', 'name slug');
 
     res.status(201).json({
       success: true,
-      message: "Product created successfully",
+      message: 'Product created successfully',
       data: product,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error creating product",
+      message: 'Error creating product',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Update product
- * @route   PUT /api/v1/products/:id
+ * @route   PUT /api/products/:id
  * @access  Private (Admin/Seller)
  */
 const updateProduct = async (req, res) => {
   try {
-    let product = await Product.findById(req.params.id)
+    let product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
-      })
+        message: 'Product not found',
+      });
     }
 
     // Check if user owns the product (for sellers)
-    if (req.user.role === "seller" && product.vendor.toString() !== req.user.id) {
+    if (
+      req.user.role === 'seller' &&
+      product.vendor.toString() !== req.user.id
+    ) {
       return res.status(403).json({
         success: false,
-        message: "Not authorized to update this product",
-      })
+        message: 'Not authorized to update this product',
+      });
     }
 
     // Handle image uploads
@@ -323,323 +332,333 @@ const updateProduct = async (req, res) => {
       // Delete old images from cloudinary
       for (const image of product.images) {
         if (image.public_id) {
-          await cloudinary.uploader.destroy(image.public_id)
+          await cloudinary.uploader.destroy(image.public_id);
         }
       }
 
       // Upload new images
-      const images = []
+      const images = [];
       for (const file of req.files) {
         const result = await cloudinary.uploader.upload(file.path, {
-          folder: "products",
-          quality: "auto",
-          fetch_format: "auto",
-        })
+          folder: 'products',
+          quality: 'auto',
+          fetch_format: 'auto',
+        });
 
         images.push({
           public_id: result.public_id,
           url: result.secure_url,
           alt: req.body.name || product.name,
-        })
+        });
       }
-      req.body.images = images
+      req.body.images = images;
     }
 
     // Update slug if name changed
     if (req.body.name && req.body.name !== product.name) {
-      req.body.slug = generateSlug(req.body.name)
+      req.body.slug = generateSlug(req.body.name);
     }
 
     // Parse JSON fields
-    if (req.body.tags && typeof req.body.tags === "string") {
-      req.body.tags = req.body.tags.split(",").map((tag) => tag.trim())
+    if (req.body.tags && typeof req.body.tags === 'string') {
+      req.body.tags = req.body.tags.split(',').map((tag) => tag.trim());
     }
-    if (req.body.features && typeof req.body.features === "string") {
-      req.body.features = req.body.features.split(",").map((feature) => feature.trim())
+    if (req.body.features && typeof req.body.features === 'string') {
+      req.body.features = req.body.features
+        .split(',')
+        .map((feature) => feature.trim());
     }
-    if (req.body.specifications && typeof req.body.specifications === "string") {
-      req.body.specifications = JSON.parse(req.body.specifications)
+    if (
+      req.body.specifications &&
+      typeof req.body.specifications === 'string'
+    ) {
+      req.body.specifications = JSON.parse(req.body.specifications);
     }
-    if (req.body.variants && typeof req.body.variants === "string") {
-      req.body.variants = JSON.parse(req.body.variants)
+    if (req.body.variants && typeof req.body.variants === 'string') {
+      req.body.variants = JSON.parse(req.body.variants);
     }
 
     product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
-    }).populate("category", "name slug")
+    }).populate('category', 'name slug');
 
     res.status(200).json({
       success: true,
-      message: "Product updated successfully",
+      message: 'Product updated successfully',
       data: product,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error updating product",
+      message: 'Error updating product',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Delete product
- * @route   DELETE /api/v1/products/:id
+ * @route   DELETE /api/products/:id
  * @access  Private (Admin/Seller)
  */
 const deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
-      })
+        message: 'Product not found',
+      });
     }
 
     // Check if user owns the product (for sellers)
-    if (req.user.role === "seller" && product.vendor.toString() !== req.user.id) {
+    if (
+      req.user.role === 'seller' &&
+      product.vendor.toString() !== req.user.id
+    ) {
       return res.status(403).json({
         success: false,
-        message: "Not authorized to delete this product",
-      })
+        message: 'Not authorized to delete this product',
+      });
     }
 
     // Delete images from cloudinary
     for (const image of product.images) {
       if (image.public_id) {
-        await cloudinary.uploader.destroy(image.public_id)
+        await cloudinary.uploader.destroy(image.public_id);
       }
     }
 
     // Delete all reviews for this product
-    await Review.deleteMany({ product: product._id })
+    await Review.deleteMany({ product: product._id });
 
-    await Product.findByIdAndDelete(req.params.id)
+    await Product.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       success: true,
-      message: "Product deleted successfully",
-    })
+      message: 'Product deleted successfully',
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error deleting product",
+      message: 'Error deleting product',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Get featured products
- * @route   GET /api/v1/products/featured
+ * @route   GET /api/products/featured
  * @access  Public
  */
 const getFeaturedProducts = async (req, res) => {
   try {
-    const { limit = 8 } = req.query
+    const { limit = 8 } = req.query;
 
     const products = await Product.find({
       isFeatured: true,
-      status: "active",
+      status: 'active',
     })
-      .populate("category", "name slug")
-      .select("-reviews")
+      .populate('category', 'name slug')
+      .select('-reviews')
       .sort({ createdAt: -1 })
-      .limit(Number(limit))
+      .limit(Number(limit));
 
     res.status(200).json({
       success: true,
       count: products.length,
       data: products,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching featured products",
+      message: 'Error fetching featured products',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Get latest products
- * @route   GET /api/v1/products/latest
+ * @route   GET /api/products/latest
  * @access  Public
  */
 const getLatestProducts = async (req, res) => {
   try {
-    const { limit = 8 } = req.query
+    const { limit = 8 } = req.query;
 
-    const products = await Product.find({ status: "active" })
-      .populate("category", "name slug")
-      .select("-reviews")
+    const products = await Product.find({ status: 'active' })
+      .populate('category', 'name slug')
+      .select('-reviews')
       .sort({ createdAt: -1 })
-      .limit(Number(limit))
+      .limit(Number(limit));
 
     res.status(200).json({
       success: true,
       count: products.length,
       data: products,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching latest products",
+      message: 'Error fetching latest products',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Get best selling products
- * @route   GET /api/v1/products/best-selling
+ * @route   GET /api/products/best-selling
  * @access  Public
  */
 const getBestSellingProducts = async (req, res) => {
   try {
-    const { limit = 8 } = req.query
+    const { limit = 8 } = req.query;
 
-    const products = await Product.find({ status: "active" })
-      .populate("category", "name slug")
-      .select("-reviews")
+    const products = await Product.find({ status: 'active' })
+      .populate('category', 'name slug')
+      .select('-reviews')
       .sort({ soldCount: -1 })
-      .limit(Number(limit))
+      .limit(Number(limit));
 
     res.status(200).json({
       success: true,
       count: products.length,
       data: products,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching best selling products",
+      message: 'Error fetching best selling products',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Get top rated products
- * @route   GET /api/v1/products/top-rated
+ * @route   GET /api/products/top-rated
  * @access  Public
  */
 const getTopRatedProducts = async (req, res) => {
   try {
-    const { limit = 8 } = req.query
+    const { limit = 8 } = req.query;
 
     const products = await Product.find({
-      status: "active",
-      "ratings.count": { $gte: 5 }, // At least 5 reviews
+      status: 'active',
+      'ratings.count': { $gte: 5 }, // At least 5 reviews
     })
-      .populate("category", "name slug")
-      .select("-reviews")
-      .sort({ "ratings.average": -1 })
-      .limit(Number(limit))
+      .populate('category', 'name slug')
+      .select('-reviews')
+      .sort({ 'ratings.average': -1 })
+      .limit(Number(limit));
 
     res.status(200).json({
       success: true,
       count: products.length,
       data: products,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching top rated products",
+      message: 'Error fetching top rated products',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Search products
- * @route   GET /api/v1/products/search
+ * @route   GET /api/products/search
  * @access  Public
  */
 const searchProducts = async (req, res) => {
   try {
-    const { q, page = 1, limit = 12 } = req.query
+    const { q, page = 1, limit = 12 } = req.query;
 
     if (!q) {
       return res.status(400).json({
         success: false,
-        message: "Search query is required",
-      })
+        message: 'Search query is required',
+      });
     }
 
     const query = {
-      status: "active",
+      status: 'active',
       $text: { $search: q },
-    }
+    };
 
-    const total = await Product.countDocuments(query)
-    const pagination = calculatePagination(page, limit, total)
+    const total = await Product.countDocuments(query);
+    const pagination = calculatePagination(page, limit, total);
 
-    const products = await Product.find(query, { score: { $meta: "textScore" } })
-      .populate("category", "name slug")
-      .select("-reviews")
-      .sort({ score: { $meta: "textScore" } })
+    const products = await Product.find(query, {
+      score: { $meta: 'textScore' },
+    })
+      .populate('category', 'name slug')
+      .select('-reviews')
+      .sort({ score: { $meta: 'textScore' } })
       .skip(pagination.skip)
-      .limit(pagination.itemsPerPage)
+      .limit(pagination.itemsPerPage);
 
     res.status(200).json({
       success: true,
       count: products.length,
       pagination,
       data: products,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error searching products",
+      message: 'Error searching products',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 /**
  * @desc    Get related products
- * @route   GET /api/v1/products/:id/related
+ * @route   GET /api/products/:id/related
  * @access  Public
  */
 const getRelatedProducts = async (req, res) => {
   try {
-    const { limit = 4 } = req.query
+    const { limit = 4 } = req.query;
 
-    const product = await Product.findById(req.params.id)
+    const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
-      })
+        message: 'Product not found',
+      });
     }
 
     const relatedProducts = await Product.find({
       _id: { $ne: product._id },
       category: product.category,
-      status: "active",
+      status: 'active',
     })
-      .populate("category", "name slug")
-      .select("-reviews")
-      .sort({ "ratings.average": -1 })
-      .limit(Number(limit))
+      .populate('category', 'name slug')
+      .select('-reviews')
+      .sort({ 'ratings.average': -1 })
+      .limit(Number(limit));
 
     res.status(200).json({
       success: true,
       count: relatedProducts.length,
       data: relatedProducts,
-    })
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching related products",
+      message: 'Error fetching related products',
       error: error.message,
-    })
+    });
   }
-}
+};
 
 module.exports = {
   getProducts,
@@ -654,4 +673,4 @@ module.exports = {
   getTopRatedProducts,
   searchProducts,
   getRelatedProducts,
-}
+};

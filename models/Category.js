@@ -1,17 +1,17 @@
-const mongoose = require("mongoose")
+const mongoose = require('mongoose');
 
 const categorySchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Category name is required"],
+      required: [true, 'Category name is required'],
       trim: true,
       unique: true,
-      maxlength: [100, "Category name cannot exceed 100 characters"],
+      maxlength: [100, 'Category name cannot exceed 100 characters'],
     },
     description: {
       type: String,
-      maxlength: [500, "Description cannot exceed 500 characters"],
+      maxlength: [500, 'Description cannot exceed 500 characters'],
     },
     slug: {
       type: String,
@@ -20,13 +20,13 @@ const categorySchema = new mongoose.Schema(
     },
     parent: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
+      ref: 'Category',
       default: null,
     },
     children: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Category",
+        ref: 'Category',
       },
     ],
     image: {
@@ -63,7 +63,7 @@ const categorySchema = new mongoose.Schema(
         name: String,
         type: {
           type: String,
-          enum: ["text", "number", "select", "multiselect", "boolean"],
+          enum: ['text', 'number', 'select', 'multiselect', 'boolean'],
         },
         options: [String],
         required: Boolean,
@@ -74,49 +74,49 @@ const categorySchema = new mongoose.Schema(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  },
-)
+  }
+);
 
 // Index for better performance
-categorySchema.index({ slug: 1 })
-categorySchema.index({ parent: 1 })
-categorySchema.index({ level: 1 })
-categorySchema.index({ isActive: 1 })
+// categorySchema.index({ slug: 1 })
+categorySchema.index({ parent: 1 });
+categorySchema.index({ level: 1 });
+categorySchema.index({ isActive: 1 });
 
 // Virtual for full path
-categorySchema.virtual("fullPath").get(function () {
+categorySchema.virtual('fullPath').get(function () {
   // This would need to be populated with parent data
-  return this.name
-})
+  return this.name;
+});
 
 // Pre-save middleware to generate slug and set level
-categorySchema.pre("save", async function (next) {
-  if (this.isModified("name")) {
+categorySchema.pre('save', async function (next) {
+  if (this.isModified('name')) {
     this.slug = this.name
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
   }
 
   if (this.parent) {
-    const parent = await this.constructor.findById(this.parent)
+    const parent = await this.constructor.findById(this.parent);
     if (parent) {
-      this.level = parent.level + 1
+      this.level = parent.level + 1;
     }
   } else {
-    this.level = 0
+    this.level = 0;
   }
 
-  next()
-})
+  next();
+});
 
 // Post-save middleware to update parent's children array
-categorySchema.post("save", async function () {
+categorySchema.post('save', async function () {
   if (this.parent) {
     await this.constructor.findByIdAndUpdate(this.parent, {
       $addToSet: { children: this._id },
-    })
+    });
   }
-})
+});
 
-module.exports = mongoose.model("Category", categorySchema)
+module.exports = mongoose.model('Category', categorySchema);

@@ -1,4 +1,4 @@
-const mongoose = require("mongoose")
+const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema(
   {
@@ -9,14 +9,14 @@ const orderSchema = new mongoose.Schema(
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: true,
     },
     items: [
       {
         product: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Product",
+          ref: 'Product',
           required: true,
         },
         name: {
@@ -96,19 +96,26 @@ const orderSchema = new mongoose.Schema(
       discount: Number,
       type: {
         type: String,
-        enum: ["percentage", "fixed"],
+        enum: ['percentage', 'fixed'],
       },
     },
     payment: {
       method: {
         type: String,
-        enum: ["credit_card", "debit_card", "paypal", "stripe", "razorpay", "cod"],
+        enum: [
+          'credit_card',
+          'debit_card',
+          'paypal',
+          'stripe',
+          'razorpay',
+          'cod',
+        ],
         required: true,
       },
       status: {
         type: String,
-        enum: ["pending", "processing", "completed", "failed", "refunded"],
-        default: "pending",
+        enum: ['pending', 'processing', 'completed', 'failed', 'refunded'],
+        default: 'pending',
       },
       transactionId: String,
       paymentIntentId: String,
@@ -126,8 +133,17 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "refunded", "returned"],
-      default: "pending",
+      enum: [
+        'pending',
+        'confirmed',
+        'processing',
+        'shipped',
+        'delivered',
+        'cancelled',
+        'refunded',
+        'returned',
+      ],
+      default: 'pending',
     },
     statusHistory: [
       {
@@ -139,7 +155,7 @@ const orderSchema = new mongoose.Schema(
         note: String,
         updatedBy: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
+          ref: 'User',
         },
       },
     ],
@@ -152,7 +168,7 @@ const orderSchema = new mongoose.Schema(
         },
         createdBy: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
+          ref: 'User',
         },
         createdAt: {
           type: Date,
@@ -165,11 +181,11 @@ const orderSchema = new mongoose.Schema(
       cancelledAt: Date,
       cancelledBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: 'User',
       },
       refundStatus: {
         type: String,
-        enum: ["pending", "processed", "failed"],
+        enum: ['pending', 'processed', 'failed'],
       },
     },
     return: {
@@ -178,31 +194,33 @@ const orderSchema = new mongoose.Schema(
       approvedAt: Date,
       status: {
         type: String,
-        enum: ["requested", "approved", "rejected", "completed"],
+        enum: ['requested', 'approved', 'rejected', 'completed'],
       },
       refundAmount: Number,
     },
   },
   {
     timestamps: true,
-  },
-)
+  }
+);
 
 // Indexes for better performance
-orderSchema.index({ user: 1, createdAt: -1 })
-orderSchema.index({ orderNumber: 1 })
-orderSchema.index({ status: 1 })
-orderSchema.index({ "payment.status": 1 })
-orderSchema.index({ createdAt: -1 })
+orderSchema.index({ user: 1, createdAt: -1 });
+// orderSchema.index({ orderNumber: 1 })
+orderSchema.index({ status: 1 });
+orderSchema.index({ 'payment.status': 1 });
+orderSchema.index({ createdAt: -1 });
 
 // Pre-save middleware to generate order number
-orderSchema.pre("save", async function (next) {
+orderSchema.pre('save', async function (next) {
   if (this.isNew) {
-    const count = await this.constructor.countDocuments()
-    this.orderNumber = `ORD-${Date.now()}-${(count + 1).toString().padStart(4, "0")}`
+    const count = await this.constructor.countDocuments();
+    this.orderNumber = `ORD-${Date.now()}-${(count + 1)
+      .toString()
+      .padStart(4, '0')}`;
   }
-  next()
-})
+  next();
+});
 
 // Method to add status history
 orderSchema.methods.addStatusHistory = function (status, note, updatedBy) {
@@ -211,8 +229,8 @@ orderSchema.methods.addStatusHistory = function (status, note, updatedBy) {
     note,
     updatedBy,
     timestamp: new Date(),
-  })
-  this.status = status
-}
+  });
+  this.status = status;
+};
 
-module.exports = mongoose.model("Order", orderSchema)
+module.exports = mongoose.model('Order', orderSchema);

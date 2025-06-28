@@ -1,12 +1,12 @@
-const nodemailer = require("nodemailer")
-const path = require("path")
-const fs = require("fs")
+const nodemailer = require('nodemailer');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * Create email transporter
  */
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT,
     secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
@@ -14,8 +14,8 @@ const createTransporter = () => {
       user: process.env.SMTP_EMAIL,
       pass: process.env.SMTP_PASSWORD,
     },
-  })
-}
+  });
+};
 
 /**
  * Email templates
@@ -84,7 +84,7 @@ const emailTemplates = {
           <div class="container">
             <div class="message">OTP Verification Email</div>
             <div class="body">
-              <p>Dear ${data.name || "User"},</p>
+              <p>Dear ${data.name || 'User'},</p>
               <p>Thank you for registering with Creed. To complete your registration, please use the following OTP (One-Time Password) to verify your account:</p>
               <div class="otp">${data.otp}</div>
               <p>This OTP is valid for 5 minutes. If you did not request this verification, please disregard this email.</p>
@@ -93,7 +93,7 @@ const emailTemplates = {
           </div>
         </body>
         </html>
-      `
+      `;
     } else {
       return `
         <!DOCTYPE html>
@@ -129,7 +129,7 @@ const emailTemplates = {
           </div>
         </body>
         </html>
-      `
+      `;
     }
   },
 
@@ -209,9 +209,9 @@ const emailTemplates = {
                 <p><strong>${item.name}</strong></p>
                 <p>Quantity: ${item.quantity} × $${item.price} = $${item.subtotal}</p>
               </div>
-            `,
+            `
               )
-              .join("")}
+              .join('')}
             
             <div class="total">
               <p>Total: $${data.total}</p>
@@ -227,70 +227,80 @@ const emailTemplates = {
     </body>
     </html>
   `,
-}
+};
 
 /**
  * Send email
  */
 const sendEmail = async ({ email, subject, template, data }) => {
   try {
-    const transporter = createTransporter()
+    const transporter = createTransporter();
 
     // Get email template
-    const htmlContent = emailTemplates[template] ? emailTemplates[template](data) : data.html
+    const htmlContent = emailTemplates[template]
+      ? emailTemplates[template](data)
+      : data.html;
 
     const mailOptions = {
       from: `"Creed" <${process.env.SMTP_EMAIL}>`,
       to: email,
       subject,
       html: htmlContent,
-    }
+    };
 
-    const info = await transporter.sendMail(mailOptions)
-    console.log("Email sent:", info.messageId)
-    return info
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent:', info.messageId);
+    return info;
   } catch (error) {
-    console.error("Email sending failed:", error)
-    throw error
+    console.error('Email sending failed:', error);
+    throw error;
   }
-}
+};
 
 /**
  * Send bulk emails
  */
 const sendBulkEmail = async (emails) => {
   try {
-    const transporter = createTransporter()
-    const results = []
+    const transporter = createTransporter();
+    const results = [];
 
     for (const emailData of emails) {
       try {
         const htmlContent = emailTemplates[emailData.template]
           ? emailTemplates[emailData.template](emailData.data)
-          : emailData.data.html
+          : emailData.data.html;
 
         const mailOptions = {
           from: `"Creed" <${process.env.SMTP_EMAIL}>`,
           to: emailData.email,
           subject: emailData.subject,
           html: htmlContent,
-        }
+        };
 
-        const info = await transporter.sendMail(mailOptions)
-        results.push({ email: emailData.email, success: true, messageId: info.messageId })
+        const info = await transporter.sendMail(mailOptions);
+        results.push({
+          email: emailData.email,
+          success: true,
+          messageId: info.messageId,
+        });
       } catch (error) {
-        results.push({ email: emailData.email, success: false, error: error.message })
+        results.push({
+          email: emailData.email,
+          success: false,
+          error: error.message,
+        });
       }
     }
 
-    return results
+    return results;
   } catch (error) {
-    console.error("Bulk email sending failed:", error)
-    throw error
+    console.error('Bulk email sending failed:', error);
+    throw error;
   }
-}
+};
 
 module.exports = {
   sendEmail,
   sendBulkEmail,
-}
+};

@@ -1,54 +1,54 @@
-const express = require("express")
-const router = express.Router()
+const express = require('express');
+const router = express.Router();
 
 // Import route modules
-const authRoutes = require("./auth")
-const userRoutes = require("./users")
-const productRoutes = require("./products")
-const categoryRoutes = require("./categories")
-const orderRoutes = require("./orders")
-const reviewRoutes = require("./reviews")
-const couponRoutes = require("./coupons")
-const adminRoutes = require("./admin")
+const authRoutes = require('./auth');
+const userRoutes = require('./users');
+const productRoutes = require('./products');
+const categoryRoutes = require('./categories');
+const orderRoutes = require('./orders');
+const reviewRoutes = require('./reviews');
+const couponRoutes = require('./coupons');
+const adminRoutes = require('./admin');
 
 // Health check route
-router.get("/health", (req, res) => {
+router.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: "API is running successfully",
+    message: 'API is running successfully',
     timestamp: new Date().toISOString(),
-    version: "1.0.0",
-  })
-})
+    version: '1.0.0',
+  });
+});
 
 // Mount routes
-router.use("/auth", authRoutes)
-router.use("/users", userRoutes)
-router.use("/products", productRoutes)
-router.use("/categories", categoryRoutes)
-router.use("/orders", orderRoutes)
-router.use("/reviews", reviewRoutes)
-router.use("/coupons", couponRoutes)
-router.use("/admin", adminRoutes)
+router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
+router.use('/products', productRoutes);
+router.use('/categories', categoryRoutes);
+router.use('/orders', orderRoutes);
+router.use('/reviews', reviewRoutes);
+router.use('/coupons', couponRoutes);
+router.use('/admin', adminRoutes);
 
 // API documentation route
-router.get("/", (req, res) => {
+router.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: "Welcome to Creed E-commerce API",
-    version: "1.0.0",
+    message: 'Welcome to Creed E-commerce API',
+    version: '1.0.0',
     endpoints: {
-      auth: "/api/v1/auth",
-      users: "/api/v1/users",
-      products: "/api/v1/products",
-      categories: "/api/v1/categories",
-      orders: "/api/v1/orders",
-      reviews: "/api/v1/reviews",
-      coupons: "/api/v1/coupons",
-      admin: "/api/v1/admin",
+      auth: '/api/auth',
+      users: '/api/users',
+      products: '/api/products',
+      categories: '/api/categories',
+      orders: '/api/orders',
+      reviews: '/api/reviews',
+      coupons: '/api/coupons',
+      admin: '/api/admin',
     },
-    documentation: "https://api-docs.creed.com",
-  })
-})
+    documentation: 'https://api-docs.creed.com',
+  });
+});
 
-module.exports = router
+module.exports = router;

@@ -1,43 +1,43 @@
-const mongoose = require("mongoose")
+const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Product name is required"],
+      required: [true, 'Product name is required'],
       trim: true,
-      maxlength: [200, "Product name cannot exceed 200 characters"],
+      maxlength: [200, 'Product name cannot exceed 200 characters'],
     },
     description: {
       type: String,
-      required: [true, "Product description is required"],
-      maxlength: [2000, "Description cannot exceed 2000 characters"],
+      required: [true, 'Product description is required'],
+      maxlength: [2000, 'Description cannot exceed 2000 characters'],
     },
     shortDescription: {
       type: String,
-      maxlength: [500, "Short description cannot exceed 500 characters"],
+      maxlength: [500, 'Short description cannot exceed 500 characters'],
     },
     price: {
       type: Number,
-      required: [true, "Product price is required"],
-      min: [0, "Price cannot be negative"],
+      required: [true, 'Product price is required'],
+      min: [0, 'Price cannot be negative'],
     },
     comparePrice: {
       type: Number,
-      min: [0, "Compare price cannot be negative"],
+      min: [0, 'Compare price cannot be negative'],
     },
     costPrice: {
       type: Number,
-      min: [0, "Cost price cannot be negative"],
+      min: [0, 'Cost price cannot be negative'],
     },
     category: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
-      required: [true, "Product category is required"],
+      ref: 'Category',
+      required: [true, 'Product category is required'],
     },
     subcategory: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
+      ref: 'Category',
     },
     brand: {
       type: String,
@@ -46,7 +46,7 @@ const productSchema = new mongoose.Schema(
     sku: {
       type: String,
       unique: true,
-      required: [true, "SKU is required"],
+      required: [true, 'SKU is required'],
     },
     images: [
       {
@@ -76,8 +76,8 @@ const productSchema = new mongoose.Schema(
     ],
     stock: {
       type: Number,
-      required: [true, "Stock quantity is required"],
-      min: [0, "Stock cannot be negative"],
+      required: [true, 'Stock quantity is required'],
+      min: [0, 'Stock cannot be negative'],
     },
     lowStockThreshold: {
       type: Number,
@@ -87,8 +87,8 @@ const productSchema = new mongoose.Schema(
       value: Number,
       unit: {
         type: String,
-        enum: ["kg", "g", "lb", "oz"],
-        default: "kg",
+        enum: ['kg', 'g', 'lb', 'oz'],
+        default: 'kg',
       },
     },
     dimensions: {
@@ -97,8 +97,8 @@ const productSchema = new mongoose.Schema(
       height: Number,
       unit: {
         type: String,
-        enum: ["cm", "in", "m"],
-        default: "cm",
+        enum: ['cm', 'in', 'm'],
+        default: 'cm',
       },
     },
     tags: [String],
@@ -116,8 +116,8 @@ const productSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "inactive", "draft", "archived"],
-      default: "active",
+      enum: ['active', 'inactive', 'draft', 'archived'],
+      default: 'active',
     },
     isFeatured: {
       type: Boolean,
@@ -145,7 +145,7 @@ const productSchema = new mongoose.Schema(
     taxClass: String,
     vendor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
     },
     ratings: {
       average: {
@@ -162,7 +162,7 @@ const productSchema = new mongoose.Schema(
     reviews: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Review",
+        ref: 'Review',
       },
     ],
     soldCount: {
@@ -176,7 +176,7 @@ const productSchema = new mongoose.Schema(
     relatedProducts: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
+        ref: 'Product',
       },
     ],
     metaData: {
@@ -188,50 +188,52 @@ const productSchema = new mongoose.Schema(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  },
-)
+  }
+);
 
 // Indexes for better performance
-productSchema.index({ name: "text", description: "text", tags: "text" })
-productSchema.index({ category: 1, status: 1 })
-productSchema.index({ price: 1 })
-productSchema.index({ "ratings.average": -1 })
-productSchema.index({ soldCount: -1 })
-productSchema.index({ createdAt: -1 })
-productSchema.index({ slug: 1 })
+productSchema.index({ name: 'text', description: 'text', tags: 'text' });
+productSchema.index({ category: 1, status: 1 });
+productSchema.index({ price: 1 });
+productSchema.index({ 'ratings.average': -1 });
+productSchema.index({ soldCount: -1 });
+productSchema.index({ createdAt: -1 });
+// productSchema.index({ slug: 1 })
 
 // Virtual for discount percentage
-productSchema.virtual("discountPercentage").get(function () {
+productSchema.virtual('discountPercentage').get(function () {
   if (this.comparePrice && this.comparePrice > this.price) {
-    return Math.round(((this.comparePrice - this.price) / this.comparePrice) * 100)
+    return Math.round(
+      ((this.comparePrice - this.price) / this.comparePrice) * 100
+    );
   }
-  return 0
-})
+  return 0;
+});
 
 // Virtual for profit margin
-productSchema.virtual("profitMargin").get(function () {
+productSchema.virtual('profitMargin').get(function () {
   if (this.costPrice && this.price > this.costPrice) {
-    return Math.round(((this.price - this.costPrice) / this.price) * 100)
+    return Math.round(((this.price - this.costPrice) / this.price) * 100);
   }
-  return 0
-})
+  return 0;
+});
 
 // Virtual for stock status
-productSchema.virtual("stockStatus").get(function () {
-  if (this.stock === 0) return "out_of_stock"
-  if (this.stock <= this.lowStockThreshold) return "low_stock"
-  return "in_stock"
-})
+productSchema.virtual('stockStatus').get(function () {
+  if (this.stock === 0) return 'out_of_stock';
+  if (this.stock <= this.lowStockThreshold) return 'low_stock';
+  return 'in_stock';
+});
 
 // Pre-save middleware to generate slug
-productSchema.pre("save", function (next) {
-  if (this.isModified("name")) {
+productSchema.pre('save', function (next) {
+  if (this.isModified('name')) {
     this.slug = this.name
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
   }
-  next()
-})
+  next();
+});
 
-module.exports = mongoose.model("Product", productSchema)
+module.exports = mongoose.model('Product', productSchema);
