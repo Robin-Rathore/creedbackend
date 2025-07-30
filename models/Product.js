@@ -142,6 +142,11 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    gst: {
+      type: Number,
+      min: [0, 'GST cannot be negative'],
+      max: [100, 'GST cannot exceed 100%'],
+    },
     taxClass: String,
     vendor: {
       type: mongoose.Schema.Types.ObjectId,
@@ -198,7 +203,6 @@ productSchema.index({ price: 1 });
 productSchema.index({ 'ratings.average': -1 });
 productSchema.index({ soldCount: -1 });
 productSchema.index({ createdAt: -1 });
-// productSchema.index({ slug: 1 })
 
 // Virtual for discount percentage
 productSchema.virtual('discountPercentage').get(function () {
@@ -235,5 +239,116 @@ productSchema.pre('save', function (next) {
   }
   next();
 });
+
+// Utility function to update category product count
+const updateCategoryCount = async (categoryId) => {
+  try {
+    if (!categoryId) return;
+
+    const count = await mongoose.model('Product').countDocuments({
+      category: categoryId,
+      status: 'active', // Only count active products
+    });
+
+    await mongoose.model('Category').findByIdAndUpdate(categoryId, {
+      productCount: count,
+    });
+
+    console.log(`Updated category ${categoryId} product count to ${count}`);
+  } catch (error) {
+    console.error('Error updating category count:', error);
+  }
+};
+
+// After product is saved (created)
+productSchema.post('save', async function (doc) {
+  console.log('Product saved, isNew:', this.isNew);
+  console.log('Product category:', doc.category);
+  console.log('Product status:', doc.status);
+
+  if (this.isNew && doc.status === 'active') {
+    try {
+      await updateCategoryCount(doc.category);
+    } catch (error) {
+      console.error('Error in post-save middleware:', error);
+    }
+  }
+});
+
+// After product is updated
+productSchema.post('findOneAndUpdate', async function (doc) {
+  if (!doc) return;
+
+  console.log('Product updated:', doc._id);
+  const update = this.getUpdate();
+
+  try {
+    // If category was changed
+    if (
+      update.category &&
+      doc.category.toString() !== update.category.toString()
+    ) {
+      console.log('Category changed from', doc.category, 'to', update.category);
+
+      // Update both old and new category counts
+      await updateCategoryCount(doc.category);
+      await updateCategoryCount(update.category);
+    }
+    // If status was changed
+    else if (update.status && doc.status !== update.status) {
+      console.log('Status changed from', doc.status, 'to', update.status);
+
+      // Update category count as active/inactive status affects count
+      await updateCategoryCount(doc.category);
+    }
+    // If just regular update of active product
+    else if (doc.status === 'active' || update.status === 'active') {
+      await updateCategoryCount(doc.category);
+    }
+  } catch (error) {
+    console.error('Error in findOneAndUpdate middleware:', error);
+  }
+});
+
+// After product is deleted
+productSchema.post('findOneAndDelete', async function (doc) {
+  if (doc) {
+    console.log('Product deleted:', doc._id, 'from category:', doc.category);
+
+    try {
+      await updateCategoryCount(doc.category);
+    } catch (error) {
+      console.error('Error in findOneAndDelete middleware:', error);
+    }
+  }
+});
+
+// Also handle deleteOne and deleteMany
+productSchema.post('deleteOne', { document: true }, async function (doc) {
+  if (doc) {
+    console.log('Product deleteOne:', doc._id);
+    await updateCategoryCount(doc.category);
+  }
+});
+
+// Static method to recalculate all category counts
+productSchema.statics.recalculateAllCategoryCounts = async function () {
+  try {
+    console.log('Starting category count recalculation...');
+
+    const categories = await mongoose.model('Category').find();
+    console.log(`Found ${categories.length} categories to update`);
+
+    for (const category of categories) {
+      await updateCategoryCount(category._id);
+    }
+
+    console.log('Category count recalculation completed');
+    return { success: true, message: 'All category counts updated' };
+  } catch (error) {
+    console.error('Error recalculating category counts:', error);
+    return { success: false, error: error.message };
+  }
+};
 
 module.exports = mongoose.model('Product', productSchema);

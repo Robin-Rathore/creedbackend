@@ -1,20 +1,20 @@
-const Product = require("../models/Product");
-const Category = require("../models/Category");
-const Review = require("../models/Review");
+const Product = require('../models/Product');
+const Category = require('../models/Category');
+const Review = require('../models/Review');
 const {
   calculatePagination,
   generateSlug,
   generateSKU,
-} = require("../utils/helpers");
-const path = require("path");
-const fs = require("fs").promises;
+} = require('../utils/helpers');
+const path = require('path');
+const fs = require('fs').promises;
 
 // File upload utilities
 const {
   saveProductImages,
   deleteProductImages,
   generateImageUrl,
-} = require("../utils/imageHelpers");
+} = require('../utils/imageHelpers');
 
 /**
  * @desc    Get all products with filtering, sorting, and pagination
@@ -32,9 +32,9 @@ const getProducts = async (req, res) => {
       minPrice,
       maxPrice,
       rating,
-      sort = "-createdAt",
+      sort = '-createdAt',
       search,
-      status = "active",
+      status = 'active',
       featured,
     } = req.query;
 
@@ -59,7 +59,7 @@ const getProducts = async (req, res) => {
 
     // Brand filter
     if (brand) {
-      query.brand = new RegExp(brand, "i");
+      query.brand = new RegExp(brand, 'i');
     }
 
     // Price range filter
@@ -71,11 +71,11 @@ const getProducts = async (req, res) => {
 
     // Rating filter
     if (rating) {
-      query["ratings.average"] = { $gte: Number(rating) };
+      query['ratings.average'] = { $gte: Number(rating) };
     }
 
     // Featured filter
-    if (featured === "true") {
+    if (featured === 'true') {
       query.isFeatured = true;
     }
 
@@ -90,9 +90,9 @@ const getProducts = async (req, res) => {
 
     // Execute query with pagination and sorting
     const products = await Product.find(query)
-      .populate("category", "name slug")
-      .populate("subcategory", "name slug")
-      .select("-reviews")
+      .populate('category', 'name slug')
+      .populate('subcategory', 'name slug')
+      .select('-reviews')
       .sort(sort)
       .skip(pagination.skip)
       .limit(pagination.itemsPerPage);
@@ -106,7 +106,7 @@ const getProducts = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching products",
+      message: 'Error fetching products',
       error: error.message,
     });
   }
@@ -120,23 +120,23 @@ const getProducts = async (req, res) => {
 const getProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
-      .populate("category", "name slug")
-      .populate("subcategory", "name slug")
-      .populate("vendor", "firstName lastName")
+      .populate('category', 'name slug')
+      .populate('subcategory', 'name slug')
+      .populate('vendor', 'firstName lastName')
       .populate({
-        path: "reviews",
+        path: 'reviews',
         populate: {
-          path: "user",
-          select: "firstName lastName avatar",
+          path: 'user',
+          select: 'firstName lastName avatar',
         },
         options: { sort: { createdAt: -1 }, limit: 10 },
       })
-      .populate("relatedProducts", "name price images ratings");
+      .populate('relatedProducts', 'name price images ratings');
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found',
       });
     }
 
@@ -151,7 +151,7 @@ const getProduct = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching product",
+      message: 'Error fetching product',
       error: error.message,
     });
   }
@@ -165,23 +165,23 @@ const getProduct = async (req, res) => {
 const getProductBySlug = async (req, res) => {
   try {
     const product = await Product.findOne({ slug: req.params.slug })
-      .populate("category", "name slug")
-      .populate("subcategory", "name slug")
-      .populate("vendor", "firstName lastName")
+      .populate('category', 'name slug')
+      .populate('subcategory', 'name slug')
+      .populate('vendor', 'firstName lastName')
       .populate({
-        path: "reviews",
+        path: 'reviews',
         populate: {
-          path: "user",
-          select: "firstName lastName avatar",
+          path: 'user',
+          select: 'firstName lastName avatar',
         },
         options: { sort: { createdAt: -1 }, limit: 10 },
       })
-      .populate("relatedProducts", "name price images ratings");
+      .populate('relatedProducts', 'name price images ratings');
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found',
       });
     }
 
@@ -196,7 +196,7 @@ const getProductBySlug = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching product",
+      message: 'Error fetching product',
       error: error.message,
     });
   }
@@ -232,6 +232,7 @@ const createProduct = async (req, res) => {
       isDigital,
       shippingRequired,
       taxable,
+      gst,
       taxClass,
     } = req.body;
 
@@ -240,7 +241,7 @@ const createProduct = async (req, res) => {
     if (!categoryDoc) {
       return res.status(400).json({
         success: false,
-        message: "Invalid category",
+        message: 'Invalid category',
       });
     }
 
@@ -259,7 +260,7 @@ const createProduct = async (req, res) => {
       } catch (uploadError) {
         return res.status(400).json({
           success: false,
-          message: "Error uploading images",
+          message: 'Error uploading images',
           error: uploadError.message,
         });
       }
@@ -282,9 +283,9 @@ const createProduct = async (req, res) => {
       lowStockThreshold,
       weight,
       dimensions,
-      tags: tags ? tags.split(",").map((tag) => tag.trim()) : [],
+      tags: tags ? tags.split(',').map((tag) => tag.trim()) : [],
       features: features
-        ? features.split(",").map((feature) => feature.trim())
+        ? features.split(',').map((feature) => feature.trim())
         : [],
       specifications: specifications ? JSON.parse(specifications) : {},
       seoTitle,
@@ -293,15 +294,16 @@ const createProduct = async (req, res) => {
       isDigital,
       shippingRequired,
       taxable,
+      gst,
       taxClass,
       vendor: req.user.id,
     });
 
-    await product.populate("category", "name slug");
+    await product.populate('category', 'name slug');
 
     res.status(201).json({
       success: true,
-      message: "Product created successfully",
+      message: 'Product created successfully',
       data: product,
     });
   } catch (error) {
@@ -316,13 +318,13 @@ const createProduct = async (req, res) => {
           });
         }
       } catch (cleanupError) {
-        console.error("Error cleaning up uploaded files:", cleanupError);
+        console.error('Error cleaning up uploaded files:', cleanupError);
       }
     }
 
     res.status(500).json({
       success: false,
-      message: "Error creating product",
+      message: 'Error creating product',
       error: error.message,
     });
   }
@@ -335,23 +337,23 @@ const createProduct = async (req, res) => {
  */
 const updateProduct = async (req, res) => {
   try {
-    let product = await Product.findById(req.params.id).populate("category");
+    let product = await Product.findById(req.params.id).populate('category');
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found',
       });
     }
 
     // Check if user owns the product (for sellers)
     if (
-      req.user.role === "seller" &&
+      req.user.role === 'seller' &&
       product.vendor.toString() !== req.user.id
     ) {
       return res.status(403).json({
         success: false,
-        message: "Not authorized to update this product",
+        message: 'Not authorized to update this product',
       });
     }
 
@@ -383,7 +385,7 @@ const updateProduct = async (req, res) => {
       } catch (uploadError) {
         return res.status(400).json({
           success: false,
-          message: "Error uploading images",
+          message: 'Error uploading images',
           error: uploadError.message,
         });
       }
@@ -395,38 +397,38 @@ const updateProduct = async (req, res) => {
     }
 
     // Parse JSON fields
-    if (req.body.tags && typeof req.body.tags === "string") {
-      req.body.tags = req.body.tags.split(",").map((tag) => tag.trim());
+    if (req.body.tags && typeof req.body.tags === 'string') {
+      req.body.tags = req.body.tags.split(',').map((tag) => tag.trim());
     }
-    if (req.body.features && typeof req.body.features === "string") {
+    if (req.body.features && typeof req.body.features === 'string') {
       req.body.features = req.body.features
-        .split(",")
+        .split(',')
         .map((feature) => feature.trim());
     }
     if (
       req.body.specifications &&
-      typeof req.body.specifications === "string"
+      typeof req.body.specifications === 'string'
     ) {
       req.body.specifications = JSON.parse(req.body.specifications);
     }
-    if (req.body.variants && typeof req.body.variants === "string") {
+    if (req.body.variants && typeof req.body.variants === 'string') {
       req.body.variants = JSON.parse(req.body.variants);
     }
 
     product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
-    }).populate("category", "name slug");
+    }).populate('category', 'name slug');
 
     res.status(200).json({
       success: true,
-      message: "Product updated successfully",
+      message: 'Product updated successfully',
       data: product,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error updating product",
+      message: 'Error updating product',
       error: error.message,
     });
   }
@@ -439,23 +441,23 @@ const updateProduct = async (req, res) => {
  */
 const deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id).populate("category");
+    const product = await Product.findById(req.params.id).populate('category');
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found',
       });
     }
 
     // Check if user owns the product (for sellers)
     if (
-      req.user.role === "seller" &&
+      req.user.role === 'seller' &&
       product.vendor.toString() !== req.user.id
     ) {
       return res.status(403).json({
         success: false,
-        message: "Not authorized to delete this product",
+        message: 'Not authorized to delete this product',
       });
     }
 
@@ -470,7 +472,7 @@ const deleteProduct = async (req, res) => {
           }
         );
       } catch (deleteError) {
-        console.error("Error deleting product images:", deleteError);
+        console.error('Error deleting product images:', deleteError);
         // Continue with product deletion even if image deletion fails
       }
     }
@@ -482,12 +484,12 @@ const deleteProduct = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Product deleted successfully",
+      message: 'Product deleted successfully',
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error deleting product",
+      message: 'Error deleting product',
       error: error.message,
     });
   }
@@ -504,10 +506,10 @@ const getFeaturedProducts = async (req, res) => {
 
     const products = await Product.find({
       isFeatured: true,
-      status: "active",
+      status: 'active',
     })
-      .populate("category", "name slug")
-      .select("-reviews")
+      .populate('category', 'name slug')
+      .select('-reviews')
       .sort({ createdAt: -1 })
       .limit(Number(limit));
 
@@ -519,7 +521,7 @@ const getFeaturedProducts = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching featured products",
+      message: 'Error fetching featured products',
       error: error.message,
     });
   }
@@ -534,9 +536,9 @@ const getLatestProducts = async (req, res) => {
   try {
     const { limit = 8 } = req.query;
 
-    const products = await Product.find({ status: "active" })
-      .populate("category", "name slug")
-      .select("-reviews")
+    const products = await Product.find({ status: 'active' })
+      .populate('category', 'name slug')
+      .select('-reviews')
       .sort({ createdAt: -1 })
       .limit(Number(limit));
 
@@ -548,7 +550,7 @@ const getLatestProducts = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching latest products",
+      message: 'Error fetching latest products',
       error: error.message,
     });
   }
@@ -563,9 +565,9 @@ const getBestSellingProducts = async (req, res) => {
   try {
     const { limit = 8 } = req.query;
 
-    const products = await Product.find({ status: "active" })
-      .populate("category", "name slug")
-      .select("-reviews")
+    const products = await Product.find({ status: 'active' })
+      .populate('category', 'name slug')
+      .select('-reviews')
       .sort({ soldCount: -1 })
       .limit(Number(limit));
 
@@ -577,7 +579,7 @@ const getBestSellingProducts = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching best selling products",
+      message: 'Error fetching best selling products',
       error: error.message,
     });
   }
@@ -593,12 +595,12 @@ const getTopRatedProducts = async (req, res) => {
     const { limit = 8 } = req.query;
 
     const products = await Product.find({
-      status: "active",
-      "ratings.count": { $gte: 5 }, // At least 5 reviews
+      status: 'active',
+      'ratings.count': { $gte: 5 }, // At least 5 reviews
     })
-      .populate("category", "name slug")
-      .select("-reviews")
-      .sort({ "ratings.average": -1 })
+      .populate('category', 'name slug')
+      .select('-reviews')
+      .sort({ 'ratings.average': -1 })
       .limit(Number(limit));
 
     res.status(200).json({
@@ -609,7 +611,7 @@ const getTopRatedProducts = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching top rated products",
+      message: 'Error fetching top rated products',
       error: error.message,
     });
   }
@@ -627,12 +629,12 @@ const searchProducts = async (req, res) => {
     if (!q) {
       return res.status(400).json({
         success: false,
-        message: "Search query is required",
+        message: 'Search query is required',
       });
     }
 
     const query = {
-      status: "active",
+      status: 'active',
       $text: { $search: q },
     };
 
@@ -640,11 +642,11 @@ const searchProducts = async (req, res) => {
     const pagination = calculatePagination(page, limit, total);
 
     const products = await Product.find(query, {
-      score: { $meta: "textScore" },
+      score: { $meta: 'textScore' },
     })
-      .populate("category", "name slug")
-      .select("-reviews")
-      .sort({ score: { $meta: "textScore" } })
+      .populate('category', 'name slug')
+      .select('-reviews')
+      .sort({ score: { $meta: 'textScore' } })
       .skip(pagination.skip)
       .limit(pagination.itemsPerPage);
 
@@ -657,7 +659,7 @@ const searchProducts = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error searching products",
+      message: 'Error searching products',
       error: error.message,
     });
   }
@@ -676,18 +678,18 @@ const getRelatedProducts = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found',
       });
     }
 
     const relatedProducts = await Product.find({
       _id: { $ne: product._id },
       category: product.category,
-      status: "active",
+      status: 'active',
     })
-      .populate("category", "name slug")
-      .select("-reviews")
-      .sort({ "ratings.average": -1 })
+      .populate('category', 'name slug')
+      .select('-reviews')
+      .sort({ 'ratings.average': -1 })
       .limit(Number(limit));
 
     res.status(200).json({
@@ -698,7 +700,7 @@ const getRelatedProducts = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching related products",
+      message: 'Error fetching related products',
       error: error.message,
     });
   }

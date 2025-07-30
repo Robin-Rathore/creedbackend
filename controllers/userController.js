@@ -446,7 +446,7 @@ const getWishlist = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).populate({
       path: 'wishlist',
-      select: 'name price images ratings status',
+      select: 'name price images ratings status slug',
     });
 
     res.status(200).json({
@@ -569,7 +569,7 @@ const getUserOrder = async (req, res) => {
     const order = await Order.findOne({
       _id: req.params.orderId,
       user: req.user.id,
-    }).populate('items.product', 'name images');
+    }).populate('items.product', 'name images slug price');
 
     if (!order) {
       return res.status(404).json({

@@ -15,6 +15,7 @@ const { sendEmail } = require('../utils/emailService');
  * @route   POST /api/orders
  * @access  Private
  */
+
 const createOrder = async (req, res) => {
   try {
     const {
@@ -29,6 +30,7 @@ const createOrder = async (req, res) => {
 
     // Validate and calculate order totals
     let subtotal = 0;
+    let totalTax = 0; // Initialize total tax
     const orderItems = [];
 
     for (const item of items) {
@@ -55,6 +57,10 @@ const createOrder = async (req, res) => {
       }
 
       const itemSubtotal = product.price * item.quantity;
+      // Calculate tax for this specific item
+      const itemTax = (itemSubtotal * (product.gst || 0)) / 100;
+
+      totalTax += itemTax; // Add to total tax
 
       orderItems.push({
         product: product._id,
@@ -69,6 +75,8 @@ const createOrder = async (req, res) => {
           alt: product.images[0]?.alt,
         },
         subtotal: itemSubtotal,
+        tax: itemTax, // Store individual item tax for reference
+        gstRate: product.gst || 0, // Store GST rate for reference
       });
 
       subtotal += itemSubtotal;
@@ -104,23 +112,21 @@ const createOrder = async (req, res) => {
       };
     }
 
-    // Calculate shipping
-    const totalWeight = orderItems.reduce((weight, item) => {
-      // Assuming weight is stored in product, default to 1kg if not specified
-      return weight + (item.product.weight?.value || 1) * item.quantity;
-    }, 0);
+    // Fixed shipping cost
+    const shipping = 59;
 
-    const shipping = calculateShippingCost(totalWeight, 100, shippingMethod); // Assuming 100km distance
-
-    // Calculate tax (8% default)
-    const taxableAmount = subtotal - discount;
-    const tax = calculateTax(taxableAmount);
+    // Use the calculated total tax instead of a single product's GST
+    const tax = totalTax;
 
     // Calculate total
     const total = subtotal - discount + shipping + tax;
 
+    // Generate order number
+    const orderNumber = generateOrderNumber();
+
     // Create order
     const order = await Order.create({
+      orderNumber,
       user: req.user.id,
       items: orderItems,
       shippingAddress,
@@ -227,7 +233,7 @@ const getAllOrders = async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 20,
+      limit = 1000,
       status,
       paymentStatus,
       dateFrom,
@@ -591,7 +597,12 @@ const getOrderStats = async (req, res) => {
         $group: {
           _id: null,
           totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: '$pricing.total' },
+          // Revenue only from delivered orders
+          totalRevenue: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'delivered'] }, '$pricing.total', 0],
+            },
+          },
           averageOrderValue: { $avg: '$pricing.total' },
           pendingOrders: {
             $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },

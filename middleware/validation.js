@@ -1,5 +1,5 @@
-const { body, param, query, validationResult } = require("express-validator");
-const { default: mongoose } = require("mongoose");
+const { body, param, query, validationResult } = require('express-validator');
+const { default: mongoose } = require('mongoose');
 
 /**
  * Handle validation errors
@@ -9,7 +9,7 @@ const handleValidationErrors = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      message: "Validation failed",
+      message: 'Validation failed',
       errors: errors.array(),
     });
   }
@@ -20,46 +20,41 @@ const handleValidationErrors = (req, res, next) => {
  * User registration validation
  */
 const validateUserRegistration = [
-  body("firstName")
+  body('firstName')
     .trim()
     .notEmpty()
-    .withMessage("First name is required")
+    .withMessage('First name is required')
     .isLength({ min: 2, max: 50 })
-    .withMessage("First name must be between 2 and 50 characters"),
+    .withMessage('First name must be between 2 and 50 characters'),
 
-  body("lastName")
+  body('lastName')
     .trim()
     .notEmpty()
-    .withMessage("Last name is required")
+    .withMessage('Last name is required')
     .isLength({ min: 2, max: 50 })
-    .withMessage("Last name must be between 2 and 50 characters"),
+    .withMessage('Last name must be between 2 and 50 characters'),
 
-  body("email")
-    .isEmail()
-    .withMessage("Please provide a valid email")
-    .normalizeEmail(),
-
-  body("password")
+  body('password')
     .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters long"),
+    .withMessage('Password must be at least 6 characters long'),
 
-  body("confirmPassword").custom((value, { req }) => {
+  body('confirmPassword').custom((value, { req }) => {
     if (value !== req.body.password) {
-      throw new Error("Password confirmation does not match password");
+      throw new Error('Password confirmation does not match password');
     }
     return true;
   }),
 
-  body("otp")
+  body('otp')
     .isLength({ min: 4, max: 4 })
-    .withMessage("OTP must be 4 digits")
+    .withMessage('OTP must be 4 digits')
     .isNumeric()
-    .withMessage("OTP must contain only numbers"),
+    .withMessage('OTP must contain only numbers'),
 
-  body("phone")
+  body('phone')
     .optional()
     .isMobilePhone()
-    .withMessage("Please provide a valid phone number"),
+    .withMessage('Please provide a valid phone number'),
 
   handleValidationErrors,
 ];
@@ -68,12 +63,12 @@ const validateUserRegistration = [
  * User login validation
  */
 const validateUserLogin = [
-  body("email")
-    .isEmail()
-    .withMessage("Please provide a valid email")
-    .normalizeEmail(),
+  // body('email')
+  // .isEmail()
+  // .withMessage('Please provide a valid email')
+  // .normalizeEmail(),
 
-  body("password").notEmpty().withMessage("Password is required"),
+  body('password').notEmpty().withMessage('Password is required'),
 
   handleValidationErrors,
 ];
@@ -82,31 +77,31 @@ const validateUserLogin = [
  * Product validation
  */
 const validateProduct = [
-  body("name")
+  body('name')
     .trim()
     .notEmpty()
-    .withMessage("Product name is required")
+    .withMessage('Product name is required')
     .isLength({ max: 200 })
-    .withMessage("Product name cannot exceed 200 characters"),
+    .withMessage('Product name cannot exceed 200 characters'),
 
-  body("description")
+  body('description')
     .trim()
     .notEmpty()
-    .withMessage("Product description is required")
+    .withMessage('Product description is required')
     .isLength({ max: 2000 })
-    .withMessage("Description cannot exceed 2000 characters"),
+    .withMessage('Description cannot exceed 2000 characters'),
 
-  body("price")
+  body('price')
     .isFloat({ min: 0 })
-    .withMessage("Price must be a positive number"),
+    .withMessage('Price must be a positive number'),
 
-  body("category").isMongoId().withMessage("Valid category ID is required"),
+  body('category').isMongoId().withMessage('Valid category ID is required'),
 
-  body("stock")
+  body('stock')
     .isInt({ min: 0 })
-    .withMessage("Stock must be a non-negative integer"),
+    .withMessage('Stock must be a non-negative integer'),
 
-  body("sku").trim().notEmpty().withMessage("SKU is required"),
+  body('sku').trim().notEmpty().withMessage('SKU is required'),
 
   handleValidationErrors,
 ];
@@ -115,35 +110,35 @@ const validateProduct = [
  * Category validation
  */
 const validateCategory = [
-  body("name")
+  body('name')
     .trim()
     .notEmpty()
-    .withMessage("Category name is required")
+    .withMessage('Category name is required')
     .isLength({ max: 100 })
-    .withMessage("Category name cannot exceed 100 characters"),
+    .withMessage('Category name cannot exceed 100 characters'),
 
-  body("parent")
+  body('parent')
     .optional({ checkFalsy: true })
     .custom(async (value) => {
-      if (!value || value === "none") return true; // Root category
+      if (!value || value === 'none') return true; // Root category
 
       if (!mongoose.Types.ObjectId.isValid(value)) {
-        throw new Error("Invalid parent category ID format");
+        throw new Error('Invalid parent category ID format');
       }
 
       // Check if parent category exists
       const parentExists = await Category.findById(value);
       if (!parentExists) {
-        throw new Error("Parent category does not exist");
+        throw new Error('Parent category does not exist');
       }
 
       return true;
     }),
 
-  body("sortOrder")
+  body('sortOrder')
     .optional()
     .isInt({ min: -1000, max: 1000 })
-    .withMessage("Sort order must be a number between -1000 and 1000"),
+    .withMessage('Sort order must be a number between -1000 and 1000'),
 
   handleValidationErrors,
 ];
@@ -151,8 +146,8 @@ const validateCategory = [
 // Helper function to get category hierarchy
 const getCategoryWithHierarchy = async (categoryId) => {
   const category = await Category.findById(categoryId)
-    .populate("parent", "name slug level")
-    .populate("children", "name slug level");
+    .populate('parent', 'name slug level')
+    .populate('children', 'name slug level');
 
   if (!category) return null;
 
@@ -162,11 +157,11 @@ const getCategoryWithHierarchy = async (categoryId) => {
     let current = cat;
 
     while (current.parent) {
-      current = await Category.findById(current.parent).select("name parent");
+      current = await Category.findById(current.parent).select('name parent');
       if (current) path.unshift(current.name);
     }
 
-    return path.join(" > ");
+    return path.join(' > ');
   };
 
   return {
@@ -180,7 +175,7 @@ const getCategoryWithHierarchy = async (categoryId) => {
 // Helper function to get all root categories
 const getRootCategories = async () => {
   return await Category.find({ parent: null })
-    .populate("children", "name slug level")
+    .populate('children', 'name slug level')
     .sort({ sortOrder: 1, name: 1 });
 };
 
@@ -216,46 +211,46 @@ const getCategoryTree = async () => {
  * Order validation
  */
 const validateOrder = [
-  body("items")
+  body('items')
     .isArray({ min: 1 })
-    .withMessage("Order must contain at least one item"),
+    .withMessage('Order must contain at least one item'),
 
-  body("items.*.product")
+  body('items.*.product')
     .isMongoId()
-    .withMessage("Valid product ID is required"),
+    .withMessage('Valid product ID is required'),
 
-  body("items.*.quantity")
+  body('items.*.quantity')
     .isInt({ min: 1 })
-    .withMessage("Quantity must be at least 1"),
+    .withMessage('Quantity must be at least 1'),
 
-  body("shippingAddress.firstName")
+  body('shippingAddress.firstName')
     .trim()
     .notEmpty()
-    .withMessage("Shipping first name is required"),
+    .withMessage('Shipping first name is required'),
 
-  body("shippingAddress.lastName")
+  body('shippingAddress.lastName')
     .trim()
     .notEmpty()
-    .withMessage("Shipping last name is required"),
+    .withMessage('Shipping last name is required'),
 
-  body("shippingAddress.address1")
+  body('shippingAddress.address1')
     .trim()
     .notEmpty()
-    .withMessage("Shipping address is required"),
+    .withMessage('Shipping address is required'),
 
-  body("shippingAddress.city")
+  body('shippingAddress.city')
     .trim()
     .notEmpty()
-    .withMessage("Shipping city is required"),
+    .withMessage('Shipping city is required'),
 
-  body("shippingAddress.postalCode")
+  body('shippingAddress.postalCode')
     .trim()
     .notEmpty()
-    .withMessage("Shipping postal code is required"),
+    .withMessage('Shipping postal code is required'),
 
-  body("payment.method")
-    .isIn(["credit_card", "debit_card", "paypal", "stripe", "razorpay", "cod"])
-    .withMessage("Valid payment method is required"),
+  body('paymentMethod')
+    .isIn(['credit_card', 'debit_card', 'paypal', 'stripe', 'razorpay', 'cod'])
+    .withMessage('Valid payment method is required'),
 
   handleValidationErrors,
 ];
@@ -264,22 +259,22 @@ const validateOrder = [
  * Review validation
  */
 const validateReview = [
-  body("rating")
+  body('rating')
     .isInt({ min: 1, max: 5 })
-    .withMessage("Rating must be between 1 and 5"),
+    .withMessage('Rating must be between 1 and 5'),
 
-  body("comment")
+  body('comment')
     .trim()
     .notEmpty()
-    .withMessage("Review comment is required")
+    .withMessage('Review comment is required')
     .isLength({ max: 1000 })
-    .withMessage("Comment cannot exceed 1000 characters"),
+    .withMessage('Comment cannot exceed 1000 characters'),
 
-  body("title")
+  body('title')
     .optional()
     .trim()
     .isLength({ max: 100 })
-    .withMessage("Title cannot exceed 100 characters"),
+    .withMessage('Title cannot exceed 100 characters'),
 
   handleValidationErrors,
 ];
@@ -287,7 +282,7 @@ const validateReview = [
 /**
  * MongoDB ObjectId validation
  */
-const validateObjectId = (field = "id") => [
+const validateObjectId = (field = 'id') => [
   param(field).isMongoId().withMessage(`Valid ${field} is required`),
 
   handleValidationErrors,

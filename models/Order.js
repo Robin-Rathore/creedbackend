@@ -232,5 +232,14 @@ orderSchema.methods.addStatusHistory = function (status, note, updatedBy) {
   });
   this.status = status;
 };
+// In your Order model file
+orderSchema.pre('save', function (next) {
+  if (!this.orderNumber) {
+    const timestamp = Date.now().toString();
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    this.orderNumber = `ORD-${timestamp.slice(-6)}${random}`;
+  }
+  next();
+});
 
 module.exports = mongoose.model('Order', orderSchema);

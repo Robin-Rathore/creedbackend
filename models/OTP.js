@@ -1,41 +1,46 @@
-const mongoose = require("mongoose")
-const mailSender = require("../utils/emailService")
+const mongoose = require('mongoose');
+const mailSender = require('../utils/emailService');
 
-const OTPSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
+const OTPSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+    },
+    otp: {
+      type: String,
+      required: true,
+    },
   },
-  otp: {
-    type: String,
-    required: true,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-    expires: 60 * 5, // 5 minutes
-  },
-})
+  {
+    timestamps: true, // gives you createdAt
+  }
+);
 
-// Pre-save middleware to send OTP email
-OTPSchema.pre("save", async function (next) {
+// TTL index to auto-delete after 5 minutes
+OTPSchema.index({ createdAt: 1 }, { expireAfterSeconds: 900 });
+
+// Send email before saving
+OTPSchema.pre('save', async function (next) {
   if (this.isNew) {
     try {
       await mailSender.sendEmail({
         email: this.email,
-        subject: "Verification From Creed",
-        template: "emailVerification",
+        subject: 'Verification From Creed',
+        template: 'emailVerification',
         data: {
-          name: "User",
+          name: 'User',
           otp: this.otp,
         },
-      })
-      console.log("OTP email sent successfully")
+      });
+      console.log('OTP email sent successfully');
     } catch (error) {
-      console.log("Error occurred while sending OTP email:", error)
+      console.error('Error sending OTP email:', error);
     }
   }
-  next()
-})
+  next();
+});
 
-module.exports = mongoose.model("OTP", OTPSchema)
+module.exports = mongoose.model('OTP', OTPSchema);

@@ -110,7 +110,17 @@ const register = async (req, res) => {
     }
 
     // Verify OTP
+    // In register function, before OTP verification
+    console.log('Searching for OTP with email:', email);
+    console.log('Email type:', typeof email);
+
     const response = await OTP.find({ email }).sort({ createdAt: -1 }).limit(1);
+    console.log('OTP search result:', response);
+    console.log('OTP count found:', response.length);
+
+    // Also try finding all OTPs for this email
+    const allOtps = await OTP.find({ email });
+    console.log('All OTPs for this email:', allOtps);
     if (response.length === 0) {
       return res.status(400).json({
         success: false,
@@ -129,6 +139,7 @@ const register = async (req, res) => {
       lastName,
       email,
       password,
+      isEmailVerified: true, // Set to true since email is verified via OTP
       avatar: {
         url: `https://api.dicebear.com/7.x/initials/svg?seed=${firstName} ${lastName}`,
       },
