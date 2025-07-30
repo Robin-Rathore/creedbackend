@@ -176,7 +176,7 @@ const createUserAutoReplyTemplate = (name) => {
   `;
 };
 
-export const postContact = async (req, res) => {
+const postContact = async (req, res) => {
   try {
     const { name, email, phone, subject, category, message } = req.body;
 
@@ -253,4 +253,8 @@ export const postContact = async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
+};
+
+module.exports = {
+  postContact,
 };
