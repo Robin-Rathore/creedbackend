@@ -72,11 +72,14 @@ const sendOTP = async (req, res) => {
 
     // Send OTP email using microservice
     try {
-      const response = await emailServiceAPI.post('/send-otp', {
-        identifier: email,
-        otp: otp,
-        name: name,
-      });
+      const response = await axios.post(
+        `${process.env.EMAIL_SERVICE_URL}/send-otp`,
+        {
+          identifier: email,
+          otp: otp,
+          name: name,
+        }
+      );
 
       if (!response) {
         return res
@@ -332,11 +335,14 @@ const forgotPassword = async (req, res) => {
 
     try {
       // Send password reset email using external API
-      const response = await emailServiceAPI.post('/send-password-reset', {
-        email: user.email,
-        resetUrl: resetUrl,
-        name: user.fullName,
-      });
+      const response = await axios.post(
+        `${process.env.EMAIL_SERVICE_URL}/send-password-reset`,
+        {
+          email: user.email,
+          resetUrl: resetUrl,
+          name: user.fullName,
+        }
+      );
 
       // Check if response is successful
       if (!response || response.status !== 200) {
@@ -514,11 +520,14 @@ const resendVerificationEmail = async (req, res) => {
       //   user.fullName
       // );
 
-      const response = await emailServiceAPI.post('/send-email-verification', {
-        email: user.email,
-        verificationUrl: verificationUrl,
-        name: user.fullName,
-      });
+      const response = await axios.post(
+        `${process.env.EMAIL_SERVICE_URL}/send-email-verification`,
+        {
+          email: user.email,
+          verificationUrl: verificationUrl,
+          name: user.fullName,
+        }
+      );
 
       if (!response) {
         return res

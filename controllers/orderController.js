@@ -215,10 +215,13 @@ const createOrder = async (req, res) => {
         total: total.toFixed(2),
       };
 
-      const response = await emailServiceAPI.post('/send-order-confirmation', {
-        email: req.user.email,
-        orderData: orderData,
-      });
+      const response = await axios.post(
+        `${process.env.EMAIL_SERVICE_URL}/send-order-confirmation`,
+        {
+          email: req.user.email,
+          orderData: orderData,
+        }
+      );
 
       console.log(
         `Order confirmation email sent successfully to: ${req.user.email}`
