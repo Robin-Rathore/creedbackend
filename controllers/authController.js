@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const OTP = require('../models/OTP');
 const otpGenerator = require('otp-generator');
-const { sendEmail } = require('../utils/emailService');
+const { default: axios } = require('axios');
 const { hashPassword, comparePassword } = require('../utils/helpers');
 
 /**
@@ -15,6 +15,19 @@ const generateToken = (id) => {
   });
 };
 
+const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL;
+
+/**
+ * Create axios instance with default config
+ */
+const emailServiceAPI = axios.create({
+  baseURL: EMAIL_SERVICE_URL,
+  timeout: 30000, // 30 seconds timeout
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 /**
  * @desc    Send OTP for registration
  * @route   POST /api/auth/send-otp
@@ -22,7 +35,7 @@ const generateToken = (id) => {
  */
 const sendOTP = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, name } = req.body;
 
     // Check if user already exists
     const checkUserPresent = await User.findOne({ email });
@@ -54,11 +67,35 @@ const sendOTP = async (req, res) => {
     const otpPayload = { email, otp };
     const otpBody = await OTP.create(otpPayload);
 
-    res.status(200).json({
-      success: true,
-      message: 'OTP sent successfully',
-      otp, // Remove this in production
-    });
+    // Send OTP email using microservice
+    try {
+      const response = await emailServiceAPI.post('/send-otp', {
+        identifier: email,
+        otp: otp,
+        name: name,
+      });
+
+      if (!response) {
+        return res
+          .status(500)
+          .json({ message: 'Failed to send verification code' });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Verification code sent successfully',
+      });
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+
+      // Delete the OTP record if email fails
+      await OTP.deleteOne({ _id: otpBody._id });
+
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP email. Please try again.',
+      });
+    }
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -110,7 +147,6 @@ const register = async (req, res) => {
     }
 
     // Verify OTP
-    // In register function, before OTP verification
     console.log('Searching for OTP with email:', email);
     console.log('Email type:', typeof email);
 
@@ -121,6 +157,7 @@ const register = async (req, res) => {
     // Also try finding all OTPs for this email
     const allOtps = await OTP.find({ email });
     console.log('All OTPs for this email:', allOtps);
+
     if (response.length === 0) {
       return res.status(400).json({
         success: false,
@@ -144,6 +181,9 @@ const register = async (req, res) => {
         url: `https://api.dicebear.com/7.x/initials/svg?seed=${firstName} ${lastName}`,
       },
     });
+
+    // Clean up used OTP
+    await OTP.deleteOne({ _id: response[0]._id });
 
     // Generate JWT token
     const token = generateToken(user._id);
@@ -264,6 +304,14 @@ const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
+    // Validate email input
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required',
+      });
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({
@@ -280,35 +328,44 @@ const forgotPassword = async (req, res) => {
     const resetUrl = `${process.env.RESET_PASSWORD_DOMAIN}/update-password/${resetToken}`;
 
     try {
-      await sendEmail({
+      // Send password reset email using external API
+      const response = await emailServiceAPI.post('/send-password-reset', {
         email: user.email,
-        subject: 'Password Reset - Creed',
-        template: 'passwordReset',
-        data: {
-          name: user.fullName,
-          resetUrl,
-        },
+        resetUrl: resetUrl,
+        name: user.fullName,
       });
 
+      // Check if response is successful
+      if (!response || response.status !== 200) {
+        throw new Error('Email service returned unsuccessful response');
+      }
+
+      console.log(`Password reset email sent successfully to: ${user.email}`);
+
+      // SINGLE response - removed the duplicate
       res.status(200).json({
         success: true,
-        message: 'Password reset email sent',
+        message: 'Password reset email sent successfully',
       });
-    } catch (error) {
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+
+      // Clear the reset token if email fails
       user.passwordResetToken = undefined;
       user.passwordResetExpires = undefined;
       await user.save({ validateBeforeSave: false });
 
       return res.status(500).json({
         success: false,
-        message: 'Email could not be sent',
+        message: 'Failed to send password reset email. Please try again.',
       });
     }
   } catch (error) {
+    console.error('Forgot password error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message,
+      message: 'Internal server error. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 };
@@ -442,25 +499,45 @@ const resendVerificationEmail = async (req, res) => {
     const verificationToken = user.generateEmailVerificationToken();
     await user.save({ validateBeforeSave: false });
 
-    // Send verification email
+    // Send verification email using microservice
     const verificationUrl = `${req.protocol}://${req.get(
       'host'
     )}/api/auth/verify-email/${verificationToken}`;
 
-    await sendEmail({
-      email: user.email,
-      subject: 'Email Verification - Creed',
-      template: 'emailVerification',
-      data: {
-        name: user.fullName,
-        verificationUrl,
-      },
-    });
+    try {
+      // await sendEmailVerificationEmail(
+      //   user.email,
+      //   verificationUrl,
+      //   user.fullName
+      // );
 
-    res.status(200).json({
-      success: true,
-      message: 'Verification email sent',
-    });
+      const response = await emailServiceAPI.post('/send-email-verification', {
+        email: user.email,
+        verificationUrl: verificationUrl,
+        name: user.fullName,
+      });
+
+      if (!response) {
+        return res
+          .status(500)
+          .json({ message: 'Failed to send verification code' });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Verification code sent successfully',
+      });
+    } catch (emailError) {
+      // If email fails, clean up the token
+      user.emailVerificationToken = undefined;
+      user.emailVerificationExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send verification email',
+      });
+    }
   } catch (error) {
     res.status(500).json({
       success: false,

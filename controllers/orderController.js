@@ -8,7 +8,20 @@ const {
   calculateTax,
   calculateShippingCost,
 } = require('../utils/helpers');
-const { sendEmail } = require('../utils/emailService');
+const { default: axios } = require('axios');
+
+const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL;
+
+/**
+ * Create axios instance with default config
+ */
+const emailServiceAPI = axios.create({
+  baseURL: EMAIL_SERVICE_URL,
+  timeout: 30000, // 30 seconds timeout
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 /**
  * @desc    Create new order
@@ -190,22 +203,27 @@ const createOrder = async (req, res) => {
     // Add order to user's orders
     await User.findByIdAndUpdate(req.user.id, { $push: { orders: order._id } });
 
-    // Send order confirmation email
+    // Send order confirmation email using external API
     try {
-      await sendEmail({
+      const orderData = {
+        customerName: `${req.user.firstName} ${req.user.lastName}`,
+        orderNumber: order.orderNumber,
+        orderDate: order.createdAt.toLocaleDateString(),
+        items: orderItems,
+        total: total.toFixed(2),
+      };
+
+      const response = await emailServiceAPI.post('/send-order-confirmation', {
         email: req.user.email,
-        subject: 'Order Confirmation - Creed',
-        template: 'orderConfirmation',
-        data: {
-          customerName: `${req.user.firstName} ${req.user.lastName}`,
-          orderNumber: order.orderNumber,
-          orderDate: order.createdAt.toLocaleDateString(),
-          items: orderItems,
-          total: total.toFixed(2),
-        },
+        orderData: orderData,
       });
+
+      console.log(
+        `Order confirmation email sent successfully to: ${req.user.email}`
+      );
     } catch (emailError) {
       console.error('Failed to send order confirmation email:', emailError);
+      // Don't fail the order creation if email fails
     }
 
     await order.populate('items.product', 'name images');
