@@ -1,5 +1,8 @@
 // Admin email addresses
 const { default: axios } = require('axios');
+const dotenv = require('dotenv');
+dotenv.config();
+
 const ADMIN_EMAILS = ['pranav.c@thpl.co.in', 'helpdesk@thpl.co.in'];
 const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL;
 

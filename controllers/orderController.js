@@ -9,6 +9,8 @@ const {
   calculateShippingCost,
 } = require('../utils/helpers');
 const { default: axios } = require('axios');
+const dotenv = require('dotenv');
+dotenv.config();
 
 const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL;
 

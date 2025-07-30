@@ -6,14 +6,8 @@ const otpGenerator = require('otp-generator');
 const { default: axios } = require('axios');
 const { hashPassword, comparePassword } = require('../utils/helpers');
 
-/**
- * Generate JWT tokens
- */
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '7d',
-  });
-};
+const dotenv = require('dotenv');
+dotenv.config();
 
 const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL;
 
@@ -27,6 +21,15 @@ const emailServiceAPI = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+/**
+ * Generate JWT tokens
+ */
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '7d',
+  });
+};
 
 /**
  * @desc    Send OTP for registration
