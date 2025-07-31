@@ -152,11 +152,11 @@ const createReview = async (req, res) => {
     const images = [];
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: 'reviews',
-          quality: 'auto',
-          fetch_format: 'auto',
-        });
+        // const result = await cloudinary.uploader.upload(file.path, {
+        //   folder: 'reviews',
+        //   quality: 'auto',
+        //   fetch_format: 'auto',
+        // });
 
         images.push({
           public_id: result.public_id,
@@ -221,20 +221,20 @@ const updateReview = async (req, res) => {
     // Handle image uploads
     if (req.files && req.files.length > 0) {
       // Delete old images from cloudinary
-      for (const image of review.images) {
-        if (image.public_id) {
-          await cloudinary.uploader.destroy(image.public_id);
-        }
-      }
+      // for (const image of review.images) {
+      //   if (image.public_id) {
+      //     await cloudinary.uploader.destroy(image.public_id);
+      //   }
+      // }
 
       // Upload new images
       const images = [];
       for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: 'reviews',
-          quality: 'auto',
-          fetch_format: 'auto',
-        });
+        // const result = await cloudinary.uploader.upload(file.path, {
+        //   folder: 'reviews',
+        //   quality: 'auto',
+        //   fetch_format: 'auto',
+        // });
 
         images.push({
           public_id: result.public_id,
@@ -292,11 +292,11 @@ const deleteReview = async (req, res) => {
     }
 
     // Delete images from cloudinary
-    for (const image of review.images) {
-      if (image.public_id) {
-        await cloudinary.uploader.destroy(image.public_id);
-      }
-    }
+    // for (const image of review.images) {
+    //   if (image.public_id) {
+    //     await cloudinary.uploader.destroy(image.public_id);
+    //   }
+    // }
 
     await Review.findByIdAndDelete(req.params.id);
 

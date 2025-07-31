@@ -81,17 +81,17 @@ const uploadAvatar = async (req, res) => {
     const user = await User.findById(req.user.id);
 
     // Delete old avatar from cloudinary if exists
-    if (user.avatar && user.avatar.public_id) {
-      await cloudinary.uploader.destroy(user.avatar.public_id);
-    }
+    // if (user.avatar && user.avatar.public_id) {
+    //   await cloudinary.uploader.destroy(user.avatar.public_id);
+    // }
 
     // Upload new avatar
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'avatars',
-      width: 300,
-      height: 300,
-      crop: 'fill',
-    });
+    // const result = await cloudinary.uploader.upload(req.file.path, {
+    //   folder: 'avatars',
+    //   width: 300,
+    //   height: 300,
+    //   crop: 'fill',
+    // });
 
     user.avatar = {
       public_id: result.public_id,
