@@ -1,4 +1,5 @@
 const { body, param, query, validationResult } = require('express-validator');
+const Category = require('../models/Category');
 const { default: mongoose } = require('mongoose');
 
 /**

@@ -4,6 +4,7 @@ const { generateSlug, calculatePagination } = require('../utils/helpers');
 const cloudinary = require('../config/cloudinary');
 const fs = require('fs');
 const path = require('path');
+const { default: mongoose } = require('mongoose');
 
 /**
  * @desc    Get all categories
