@@ -102,8 +102,6 @@ const validateProduct = [
     .isInt({ min: 0 })
     .withMessage('Stock must be a non-negative integer'),
 
-  body('sku').trim().notEmpty().withMessage('SKU is required'),
-
   handleValidationErrors,
 ];
 

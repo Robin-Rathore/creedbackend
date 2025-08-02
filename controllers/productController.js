@@ -223,6 +223,7 @@ const createProduct = async (req, res) => {
       lowStockThreshold,
       weight,
       dimensions,
+      capacity,
       tags,
       features,
       specifications,
@@ -283,6 +284,7 @@ const createProduct = async (req, res) => {
       lowStockThreshold,
       weight,
       dimensions,
+      capacity,
       tags: tags ? tags.split(',').map((tag) => tag.trim()) : [],
       features: features
         ? features.split(',').map((feature) => feature.trim())

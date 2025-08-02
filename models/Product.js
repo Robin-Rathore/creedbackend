@@ -101,6 +101,14 @@ const productSchema = new mongoose.Schema(
         default: 'cm',
       },
     },
+    capacity: {
+      value: Number,
+      unit: {
+        type: String,
+        enum: ['L', 'mL', 'gal'],
+        default: 'L',
+      },
+    },
     tags: [String],
     features: [String],
     specifications: {
