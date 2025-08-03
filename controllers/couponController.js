@@ -1,5 +1,7 @@
 const Coupon = require('../models/Coupon');
-const Order = require('../models/Order'); // Import Order model
+const Order = require('../models/Order');
+const User = require('../models/User');
+const Product = require('../models/Product');
 const { calculatePagination, generateCouponCode } = require('../utils/helpers');
 
 /**
@@ -250,16 +252,240 @@ const deleteCoupon = async (req, res) => {
  */
 const validateCoupon = async (req, res) => {
   try {
-    const { code, orderAmount } = req.body;
+    const { code, orderAmount, cartItems } = req.body;
+    const userId = req.user?.id;
 
-    if (!code || !orderAmount) {
+    // Validate input
+    if (!code || !orderAmount || !cartItems || cartItems.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Coupon code and order amount are required',
+        message: 'Missing required fields: code, orderAmount, and cartItems',
       });
     }
 
-    const coupon = await Coupon.findOne({ code: code.toUpperCase() });
+    // Find the coupon
+    const coupon = await Coupon.findOne({
+      code: code.toUpperCase(),
+      isActive: true,
+    });
+
+    if (!coupon) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invalid coupon code',
+        data: {
+          isValid: false,
+          errors: ['Coupon not found'],
+        },
+      });
+    }
+
+    // Check if coupon is currently valid (date and usage limits)
+    const now = new Date();
+    const validationErrors = [];
+
+    if (coupon.validFrom > now) {
+      validationErrors.push('Coupon is not yet active');
+    }
+
+    if (coupon.validUntil < now) {
+      validationErrors.push('Coupon has expired');
+    }
+
+    if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+      validationErrors.push('Coupon usage limit reached');
+    }
+
+    // Check minimum order amount
+    if (orderAmount < coupon.minimumOrderAmount) {
+      validationErrors.push(
+        `Minimum order amount of ₹${coupon.minimumOrderAmount} required`
+      );
+    }
+
+    // Check user-specific validations if user is logged in
+    if (userId) {
+      const user = await User.findById(userId);
+
+      // Check if first time user only
+      if (coupon.firstTimeUserOnly) {
+        const userOrderCount = await Order.countDocuments({
+          user: userId,
+          status: 'completed',
+        });
+        if (userOrderCount > 0) {
+          validationErrors.push(
+            'This coupon is only valid for first-time customers'
+          );
+        }
+      }
+
+      // Check usage limit per user
+      const userUsageCount = coupon.usageHistory.filter(
+        (usage) => usage.user.toString() === userId
+      ).length;
+
+      if (userUsageCount >= coupon.usageLimitPerUser) {
+        validationErrors.push(
+          'You have reached the usage limit for this coupon'
+        );
+      }
+
+      // Check if user is in applicable users list (if specified)
+      if (coupon.applicableUsers.length > 0) {
+        const isApplicableUser = coupon.applicableUsers.some(
+          (user) => user.toString() === userId
+        );
+        if (!isApplicableUser) {
+          validationErrors.push(
+            'This coupon is not applicable to your account'
+          );
+        }
+      }
+    }
+
+    // Check product/category restrictions
+    if (
+      coupon.applicableProducts.length > 0 ||
+      coupon.applicableCategories.length > 0
+    ) {
+      const productIds = cartItems.map((item) => item.productId);
+      const products = await Product.find({
+        _id: { $in: productIds },
+      }).populate('category');
+
+      let hasApplicableProducts = false;
+
+      for (const product of products) {
+        // Check if product is in applicable products
+        if (coupon.applicableProducts.length > 0) {
+          if (coupon.applicableProducts.includes(product._id)) {
+            hasApplicableProducts = true;
+            break;
+          }
+        }
+
+        // Check if product category is in applicable categories
+        if (coupon.applicableCategories.length > 0) {
+          if (coupon.applicableCategories.includes(product.category._id)) {
+            hasApplicableProducts = true;
+            break;
+          }
+        }
+      }
+
+      if (!hasApplicableProducts) {
+        validationErrors.push(
+          'This coupon is not applicable to any items in your cart'
+        );
+      }
+    }
+
+    // Check excluded products/categories
+    if (
+      coupon.excludedProducts.length > 0 ||
+      coupon.excludedCategories.length > 0
+    ) {
+      const productIds = cartItems.map((item) => item.productId);
+      const products = await Product.find({
+        _id: { $in: productIds },
+      }).populate('category');
+
+      for (const product of products) {
+        // Check if product is excluded
+        if (coupon.excludedProducts.includes(product._id)) {
+          validationErrors.push(
+            `This coupon cannot be applied to ${product.name}`
+          );
+          break;
+        }
+
+        // Check if product category is excluded
+        if (coupon.excludedCategories.includes(product.category._id)) {
+          validationErrors.push(
+            `This coupon cannot be applied to ${product.category.name} products`
+          );
+          break;
+        }
+      }
+    }
+
+    // If there are validation errors, return them
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: validationErrors[0], // Return first error as main message
+        data: {
+          isValid: false,
+          errors: validationErrors,
+          coupon: {
+            code: coupon.code,
+            description: coupon.description,
+            type: coupon.type,
+            value: coupon.value,
+          },
+        },
+      });
+    }
+
+    // Calculate discount amount
+    const discountAmount = coupon.calculateDiscount(orderAmount);
+
+    // Return successful validation
+    res.json({
+      success: true,
+      message: 'Coupon is valid',
+      data: {
+        isValid: true,
+        coupon: {
+          _id: coupon._id,
+          code: coupon.code,
+          description: coupon.description,
+          type: coupon.type,
+          value: coupon.value,
+          minimumOrderAmount: coupon.minimumOrderAmount,
+          maximumDiscountAmount: coupon.maximumDiscountAmount,
+          validUntil: coupon.validUntil,
+        },
+        discountAmount,
+        errors: [],
+      },
+    });
+  } catch (error) {
+    console.error('Coupon validation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error while validating coupon',
+      data: {
+        isValid: false,
+        errors: ['Server error occurred'],
+      },
+    });
+  }
+};
+
+/**
+ * @desc    Apply coupon to order
+ * @route   POST /api/coupons/apply
+ * @access  Private
+ */
+const applyCoupon = async (req, res) => {
+  try {
+    const { code, orderId } = req.body;
+    const userId = req.user.id;
+
+    // Find the order and coupon
+    const [order, coupon] = await Promise.all([
+      Order.findOne({ _id: orderId, user: userId }),
+      Coupon.findOne({ code: code.toUpperCase(), isActive: true }),
+    ]);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
 
     if (!coupon) {
       return res.status(404).json({
@@ -268,11 +494,15 @@ const validateCoupon = async (req, res) => {
       });
     }
 
-    // Get user's order count for first-time user check
-    const userOrderCount = await Order.countDocuments({ user: req.user.id });
+    // Validate coupon (reuse validation logic)
+    const userOrderCount = await getUserOrderCount(userId);
+    const isValid = coupon.isValidForUser(
+      userId,
+      order.subtotal,
+      userOrderCount
+    );
 
-    // Check if coupon is valid for user
-    if (!coupon.isValidForUser(req.user.id, orderAmount, userOrderCount)) {
+    if (!isValid) {
       return res.status(400).json({
         success: false,
         message: 'Coupon is not valid for this order',
@@ -280,26 +510,42 @@ const validateCoupon = async (req, res) => {
     }
 
     // Calculate discount
-    const discountAmount = coupon.calculateDiscount(orderAmount);
+    const discountAmount = coupon.calculateDiscount(order.subtotal);
 
-    res.status(200).json({
+    // Update order with coupon
+    order.coupon = {
+      code: coupon.code,
+      discountAmount: discountAmount,
+    };
+    order.totalAmount =
+      order.subtotal + order.shippingCost + order.tax - discountAmount;
+
+    await order.save();
+
+    // Add to coupon usage history
+    coupon.usageHistory.push({
+      user: userId,
+      order: orderId,
+      discountAmount: discountAmount,
+      usedAt: new Date(),
+    });
+    coupon.usedCount += 1;
+    await coupon.save();
+
+    res.json({
       success: true,
-      message: 'Coupon is valid',
+      message: 'Coupon applied successfully',
       data: {
-        code: coupon.code,
-        description: coupon.description,
-        type: coupon.type,
-        value: coupon.value,
+        order,
         discountAmount,
-        minimumOrderAmount: coupon.minimumOrderAmount,
-        maximumDiscountAmount: coupon.maximumDiscountAmount,
+        finalAmount: order.totalAmount,
       },
     });
   } catch (error) {
+    console.error('Apply coupon error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error validating coupon',
-      error: error.message,
+      message: 'Internal server error while applying coupon',
     });
   }
 };
@@ -362,6 +608,7 @@ const getCouponStats = async (req, res) => {
 const getActiveCoupons = async (req, res) => {
   try {
     const now = new Date();
+    const userId = req.user?.id;
 
     const coupons = await Coupon.find({
       isActive: true,
@@ -371,9 +618,16 @@ const getActiveCoupons = async (req, res) => {
         { usageLimit: null },
         { $expr: { $lt: ['$usedCount', '$usageLimit'] } },
       ],
-    }).select(
-      'code description type value minimumOrderAmount maximumDiscountAmount'
-    );
+    }).select('code description type value minimumOrderAmount validUntil');
+
+    // If no user is logged in, return all active coupons
+    if (!userId) {
+      return res.json({
+        success: true,
+        count: coupons.length,
+        data: coupons,
+      });
+    }
 
     // Filter coupons that are applicable to the user
     const applicableCoupons = [];
@@ -381,14 +635,14 @@ const getActiveCoupons = async (req, res) => {
     for (const coupon of coupons) {
       // Check if coupon is applicable to user
       if (coupon.applicableUsers.length > 0) {
-        if (!coupon.applicableUsers.includes(req.user.id)) {
+        if (!coupon.applicableUsers.includes(userId)) {
           continue;
         }
       }
 
       // Check usage limit per user
       const userUsageCount = coupon.usageHistory.filter(
-        (usage) => usage.user.toString() === req.user.id
+        (usage) => usage.user.toString() === userId
       ).length;
 
       if (userUsageCount >= coupon.usageLimitPerUser) {
@@ -398,7 +652,8 @@ const getActiveCoupons = async (req, res) => {
       // Check first time user only
       if (coupon.firstTimeUserOnly) {
         const userOrderCount = await Order.countDocuments({
-          user: req.user.id,
+          user: userId,
+          status: 'completed',
         });
         if (userOrderCount > 0) {
           continue;
@@ -408,19 +663,24 @@ const getActiveCoupons = async (req, res) => {
       applicableCoupons.push(coupon);
     }
 
-    res.status(200).json({
+    res.json({
       success: true,
       count: applicableCoupons.length,
       data: applicableCoupons,
     });
   } catch (error) {
+    console.error('Get active coupons error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching active coupons',
-      error: error.message,
+      message: 'Internal server error while fetching coupons',
     });
   }
 };
+
+// Helper function
+async function getUserOrderCount(userId) {
+  return await Order.countDocuments({ user: userId, status: 'completed' });
+}
 
 module.exports = {
   getAllCoupons,
@@ -429,6 +689,7 @@ module.exports = {
   updateCoupon,
   deleteCoupon,
   validateCoupon,
+  applyCoupon,
   getCouponStats,
   getActiveCoupons,
 };

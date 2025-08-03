@@ -7,6 +7,7 @@ const {
   updateCoupon,
   deleteCoupon,
   validateCoupon,
+  applyCoupon,
   getCouponStats,
   getActiveCoupons,
 } = require('../controllers/couponController');
@@ -16,9 +17,9 @@ const { validateObjectId } = require('../middleware/validation');
 /**
  * @route   GET /api/coupons/active
  * @desc    Get active coupons for user
- * @access  Private
+ * @access  Public/Private (works for both)
  */
-router.get('/active', protect, getActiveCoupons);
+router.get('/active', getActiveCoupons);
 
 /**
  * @route   POST /api/coupons/validate
@@ -26,6 +27,13 @@ router.get('/active', protect, getActiveCoupons);
  * @access  Private
  */
 router.post('/validate', protect, validateCoupon);
+
+/**
+ * @route   POST /api/coupons/apply
+ * @desc    Apply coupon to order
+ * @access  Private
+ */
+router.post('/apply', protect, applyCoupon);
 
 /**
  * @route   GET /api/coupons
