@@ -2,6 +2,9 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const OTP = require('../models/OTP');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 const otpGenerator = require('otp-generator');
 const { default: axios } = require('axios');
 const { hashPassword, comparePassword } = require('../utils/helpers');
@@ -648,6 +651,142 @@ const changePassword = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Google Authentication (Login & Signup)
+ * @route   POST /api/auth/google
+ * @access  Public
+ */
+const googleAuth = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google credential token is required',
+      });
+    }
+
+    // Verify Google ID Token
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const {
+      sub: googleId,
+      email,
+      given_name: firstName,
+      family_name: lastName,
+      picture,
+    } = payload;
+
+    // 1. Find user by googleId
+    let user = await User.findOne({ googleId });
+
+    if (!user) {
+      // 2. If not found, find user by email (registered locally first)
+      user = await User.findOne({ email });
+
+      if (user) {
+        // Link Google ID to existing user
+        user.googleId = googleId;
+        if (!user.avatar || !user.avatar.url) {
+          user.avatar = { url: picture };
+        }
+        user.isEmailVerified = true;
+        await user.save();
+      } else {
+        // 3. Register a new user
+        user = await User.create({
+          firstName: firstName || 'Google',
+          lastName: lastName || 'User',
+          email,
+          googleId,
+          isEmailVerified: true,
+          avatar: {
+            url: picture || `https://api.dicebear.com/7.x/initials/svg?seed=${firstName} ${lastName}`,
+          },
+        });
+      }
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account has been deactivated',
+      });
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    // Generate JWT token
+    const token = generateToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Authentication successful',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+        avatar: user.avatar,
+      },
+    });
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Google authentication failed',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    Get currently logged in user
+ * @route   GET /api/auth/me
+ * @access  Private
+ */
+const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+        avatar: user.avatar,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   sendOTP,
   register,
@@ -659,4 +798,6 @@ module.exports = {
   resendVerificationEmail,
   refreshToken,
   changePassword,
+  googleAuth,
+  getMe,
 };

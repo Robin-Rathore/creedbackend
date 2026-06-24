@@ -11,6 +11,8 @@ const {
   resendVerificationEmail,
   refreshToken,
   changePassword,
+  googleAuth,
+  getMe,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const {
@@ -87,5 +89,19 @@ router.post('/refresh-token', refreshToken);
  * @access  Private
  */
 router.put('/change-password', protect, changePassword);
+
+/**
+ * @route   POST /api/auth/google
+ * @desc    Google authentication
+ * @access  Public
+ */
+router.post('/google', googleAuth);
+
+/**
+ * @route   GET /api/auth/me
+ * @desc    Get currently logged in user
+ * @access  Private
+ */
+router.get('/me', protect, getMe);
 
 module.exports = router;
